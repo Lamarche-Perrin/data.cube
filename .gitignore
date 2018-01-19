@@ -1,0 +1,14 @@
+# R FILES
+.Rproj.user
+.Rhistory
+.RData
+inst/doc
+
+# TEMPORARY FILES
+*~
+*.backup
+#*#
+
+# DATA FILES
+rsconnect
+data/guardian.csv
