@@ -7,8 +7,8 @@ inst/doc
 # TEMPORARY FILES
 *~
 *.backup
-#*#
+**/#*#
+**/.#*
 
 # DATA FILES
 rsconnect
-data/guardian.csv

@@ -185,9 +185,11 @@ remove.dims.data.cube <- function (dc, dims) {
     dc$dim.names <- dc$dim.names [! dc$dim.names %in% dims]
     dc$dim.nb <- length (dc$dim.names)
 
-    agg <- aggregate (dc$data, by=dc$cells, FUN=sum)
-    dc$cells <- agg [dc$dim.names]
-    dc$data <- agg [names (dc$data)]
+    if (dc$dim.nb > 0) {
+        agg <- aggregate (dc$data, by=dc$cells, FUN=sum)
+        dc$cells <- agg [dc$dim.names]
+        dc$data <- agg [names (dc$data)]
+    } else { for (dat in names (dc$data)) { dc$data[[dat]] <- NULL } }
     
     return (dc)
 }

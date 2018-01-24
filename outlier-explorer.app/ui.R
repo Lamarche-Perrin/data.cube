@@ -24,8 +24,13 @@
 library ('shiny')
 
 fluidPage (
-    titlePanel ("Outlier Explorer"),
+    uiOutput ("app.title"),
     fluidRow (
+        column (3,
+                radioButtons ("dataset", label=h4("Select dataset"),
+                              choices=c("Guardian comments (2016)"="guardian.2016", "Twitter politics (FR)"="twitter.fr"), selected=character(0)),
+                conditionalPanel (condition="$('html').hasClass('shiny-busy')", img (src="../images/busy2.gif", height = 90, width = 91))
+                ),
         column (3,
                 uiOutput ("user.buttons"),
                 uiOutput ("user.list"),
@@ -37,35 +42,28 @@ fluidPage (
                 uiOutput ("time.list"),
                 uiOutput ("time.slider")
                 ),
-        column (3,
-                h4 ("Normalise data"),
-                conditionalPanel (condition="input['user.selection'] != 'none'", checkboxInput ("user.normalisation", label="By users", value=FALSE)),
-                conditionalPanel (condition="input['topic.selection'] != 'none'", checkboxInput ("topic.normalisation", label="By topics", value=FALSE)),
-                conditionalPanel (condition="input['time.selection'] != 'none'", checkboxInput ("time.normalisation", label="By dates", value=FALSE)),
-                radioButtons ("deviation.type", label=h4("Statistical test"), inline=TRUE,
-                              choices=c("Poisson test"="poisson", "KL Divergence"="KLdiv")),
-                numericInput ("outlier.threshold", label=h4("Outlier threshold"), 3, min=1, step=1),
-                checkboxInput ("outlier.labels", label="Display outlier labels", value=FALSE)
-                ),
-        column (3,
-                numericInput ("min.obs", label=h4("Filter data (min value)"), 1, min=0, step=1)
-                )
+        uiOutput ("column2"),
+        uiOutput ("column3")
+                
     ),
     hr (),
-    mainPanel (
-        tabsetPanel (type="tabs",
-                     tabPanel ("Data structure", verbatimTextOutput (outputId="data.structure")),
-                     tabPanel ("Data plot", plotOutput (outputId="data.plot")),
-                     tabPanel ("Outlier plot",
-                               fluidRow (
-                                   column (8, plotOutput (outputId="outlier.plot", width="100%")),
-                                   column (4, plotOutput (outputId="distribution.plot", width="100%"))
-                               )
-                               ),
-                     tabPanel ("Outlier list",
-                               verbatimTextOutput (outputId="positive.outlier.list"),
-                               verbatimTextOutput (outputId="negative.outlier.list")
-                               )
-                     )
+    conditionalPanel(
+        condition = "(typeof input.dataset !== 'undefined' && input.dataset.length > 0)",
+        mainPanel (
+            tabsetPanel (type="tabs",
+                         tabPanel ("Data structure", verbatimTextOutput (outputId="data.structure")),
+                         tabPanel ("Data plot", plotOutput (outputId="data.plot")),
+                         tabPanel ("Outlier plot",
+                                   fluidRow (
+                                       column (8, plotOutput (outputId="outlier.plot")),
+                                       column (4, plotOutput (outputId="distribution.plot"))
+                                   )
+                                   ),
+                         tabPanel ("Outlier list",
+                                   verbatimTextOutput (outputId="positive.outlier.list"),
+                                   verbatimTextOutput (outputId="negative.outlier.list")
+                                   )
+                         ), style="width: 100%;"
+        )
     )
 )

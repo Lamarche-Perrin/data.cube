@@ -23,65 +23,98 @@
 
 library ('shiny')
 
-source ('data.cube.R')
+source ('../data.cube.R')
 
 function (input, output) {
-    file <- 'data/guardian.small.csv'
+
+    output$app.title <- renderUI ({ titlePanel ('Outlier Explorer') })
+
+    dc <-  reactive ({
+        if (is.null (input$dataset)) { return (NULL) }
+        
+        output$app.title <- renderUI ({ titlePanel (paste ('Outlier Explorer - ', input$dataset, sep='')) })
+
+        file <- paste ('../data/', input$dataset, '.csv', sep='')
+        cat (file=stderr(), file, "\n")
     
-    df <- read.csv (file, stringsAsFactors=FALSE)
-    dc <- as.data.cube (df)
+        df <- read.csv (file, stringsAsFactors=FALSE)
+        dc <- as.data.cube (df)
 
-    ## Dimension selection
-    dim.buttons <- function (dim, label=dim) {
-        choices <- c('all', 'some', 'one', 'none')
-        names(choices) <- c(paste('All (', dc$elem.nb[[dim]], ')', sep=''), 'Some', 'One', 'None (aggregate)')
-        return (renderUI ({ radioButtons (paste(dim, '.selection', sep=''), label=h4(label), inline=TRUE,
-                                          choices=choices, selected='none')
-        }))
-    }
-    
-    output$user.buttons <- dim.buttons ('user', 'Users')
-    output$topic.buttons <- dim.buttons ('topic', 'Topics')
-    output$time.buttons <- dim.buttons ('time', 'Dates')
-    
-    ## Selection list
-    head.selection <- 1000
+        ## Dimension selection
+        dim.buttons <- function (dim, label=dim) {
+            choices <- c('all', 'some', 'one', 'none')
+            names(choices) <- c(paste('All (', dc$elem.nb[[dim]], ')', sep=''), 'Some', 'One', 'None (aggregate)')
+            return (renderUI ({ radioButtons (paste(dim, '.selection', sep=''), label=h4(label), inline=TRUE,
+                                              choices=choices, selected='none')
+            }))
+        }
+        
+        output$user.buttons <- dim.buttons ('user', 'Users')
+        output$topic.buttons <- dim.buttons ('topic', 'Topics')
+        output$time.buttons <- dim.buttons ('time', 'Weeks')
+        
+        ## Selection list
+        head.selection <- 1000
 
-    dim.list <- function (dim, order='value') {
-        dim.order <- 1:min(dc$elem.nb[[dim]], head.selection)
-        if (order == 'value') { dim.order <- dc$margins[[dim]]$cells[[dim]] [head (order(-dc$margins[[dim]]$data$obs), head.selection)] }
-        if (order == 'key') { dim.order <- head (order(dc$elem.names[[dim]]), head.selection) }
+        dim.list <- function (dim, order='value') {
+            dim.order <- 1:min(dc$elem.nb[[dim]], head.selection)
+            if (order == 'value') { dim.order <- dc$margins[[dim]]$cells[[dim]] [head (order(-dc$margins[[dim]]$data$obs), head.selection)] }
+            if (order == 'key') { dim.order <- head (order(dc$elem.names[[dim]]), head.selection) }
 
-        dim.list <- as.list (dc$elem.names[[dim]][dim.order])
-        names (dim.list) <- paste (dc$elem.names[[dim]][dim.order], ' (', round (dc$margins[[dim]]$data$obs[match (dim.order, dc$margins[[dim]]$cells[[dim]])]), ' comments)', sep='')
+            dim.list <- as.list (dc$elem.names[[dim]][dim.order])
+            names (dim.list) <- paste (dc$elem.names[[dim]][dim.order], ' (', round (dc$margins[[dim]]$data$obs[match (dim.order, dc$margins[[dim]]$cells[[dim]])]), ' comments)', sep='')
 
-        return (renderUI ({ conditionalPanel (condition=paste('input["', dim, '.selection"] == "one"', sep=''),
-                                              selectInput (paste ('selected', dim, sep='.'), label=NULL,
-                                                           choices=dim.list)
-                                              )
-        }))
-    }
+            return (renderUI ({ conditionalPanel (condition=paste('input["', dim, '.selection"] == "one"', sep=''),
+                                                  selectInput (paste ('selected', dim, sep='.'), label=NULL,
+                                                               choices=dim.list)
+                                                  )
+            }))
+        }
 
-    output$user.list <- dim.list ('user')
-    output$topic.list <- dim.list ('topic', 'key')
-    output$time.list <- dim.list ('time', 'key')
+        output$user.list <- dim.list ('user')
+        output$topic.list <- dim.list ('topic', 'key')
+        output$time.list <- dim.list ('time', 'key')
 
-    ## Selection slider
-    dim.slider <- function (dim) {
-        return (renderUI ({ conditionalPanel (condition=paste('input["', dim, '.selection"] == "some"', sep=''),
-                                              sliderInput (paste (dim, 'number', sep='.'), label=NULL,
-                                                           value=5, min=1, max=dc$elem.nb[[dim]], step=1)
-                                              )
-        }))
-    }
+        ## Selection slider
+        dim.slider <- function (dim) {
+            return (renderUI ({ conditionalPanel (condition=paste('input["', dim, '.selection"] == "some"', sep=''),
+                                                  sliderInput (paste (dim, 'number', sep='.'), label=NULL,
+                                                               value=5, min=1, max=dc$elem.nb[[dim]], step=1)
+                                                  )
+            }))
+        }
 
-    output$user.slider <- dim.slider ('user')
-    output$topic.slider <- dim.slider ('topic')
-    output$time.slider <- dim.slider ('time')
+        output$user.slider <- dim.slider ('user')
+        output$topic.slider <- dim.slider ('topic')
+        output$time.slider <- dim.slider ('time')
+
+        output$column2 <- renderUI ({
+            column (3,
+                    h4 ("Normalise data"),
+                    conditionalPanel (condition="input['user.selection'] != 'none'", checkboxInput ("user.normalisation", label="By users", value=FALSE)),
+                    conditionalPanel (condition="input['topic.selection'] != 'none'", checkboxInput ("topic.normalisation", label="By topics", value=FALSE)),
+                    conditionalPanel (condition="input['time.selection'] != 'none'", checkboxInput ("time.normalisation", label="By weeks", value=FALSE)),
+                    radioButtons ("deviation.type", label=h4("Statistical test"), inline=TRUE,
+                                  choices=c("Poisson test"="poisson", "KL Divergence"="KLdiv")),
+                    numericInput ("outlier.threshold", label=h4("Outlier threshold"), 3, min=1, step=1),
+                    checkboxInput ("outlier.labels", label="Display outlier labels", value=FALSE)
+                    )
+        })
+
+        output$column3 <- renderUI ({
+            column (3,
+                    numericInput ("min.obs", label=h4("Filter data (min value)"), 1, min=0, step=1)
+                    )
+        })
+        
+        return (dc)
+    })
 
     ## Sever computation
     dc.agg <- reactive ({
-        dc.agg <- dc
+        if (is.null (input$dataset)) { return (NULL) }
+        
+        dc.agg <- dc()
 
         elems <- list()
         if (input$user.selection == 'one') { elems[['user']] <- c(input$selected.user) }
@@ -107,33 +140,51 @@ function (input, output) {
     })
 
     dc.dev1 <- reactive ({
-        dims <- c()
-        if (input$user.selection %in% c('all','some','one') && input$user.normalisation) { dims <- append(dims,'user') }
-        if (input$topic.selection %in% c('all','some','one') && input$topic.normalisation) { dims <- append(dims,'topic') }
-        if (input$time.selection %in% c('all','some','one') && input$time.normalisation) { dims <- append(dims,'time') }
+        if (is.null (input$dataset)) { return (NULL) }
 
-        return (compute.expected (dc.agg(), dims=dims))
+        dc.dev1 <- dc.agg()
+
+        if (dc.dev1$dim.nb > 0) { 
+            dims <- c()
+            if (input$user.selection %in% c('all','some','one') && input$user.normalisation) { dims <- append(dims,'user') }
+            if (input$topic.selection %in% c('all','some','one') && input$topic.normalisation) { dims <- append(dims,'topic') }
+            if (input$time.selection %in% c('all','some','one') && input$time.normalisation) { dims <- append(dims,'time') }
+            
+            dc.dev1 <- compute.expected (dc.agg(), dims=dims)
+        }
+
+        return (dc.dev1)
     })
 
     dc.dev2 <- reactive ({
+        if (is.null (input$dataset)) { return (NULL) }
+        if (dc.dev1()$dim.nb == 0) { return (dc.dev1()) }
         return (compute.deviated (dc.dev1(), type=input$deviation.type))
     })
 
     dc.dev3 <- reactive ({
+        if (is.null (input$dataset)) { return (NULL) }
+        if (dc.dev2()$dim.nb == 0) { return (dc.dev2()) }
         return (compute.outliers (dc.dev2(), threshold=input$outlier.threshold))
     })
 
     dc.out <- reactive ({
+        if (is.null (input$dataset)) { return (NULL) }
+        if (dc.dev3()$dim.nb == 0) { return (dc.dev3()) }
         dc.out <- dc.dev3()
         dc.out$data$display <- (dc.out$data$obs >= input$min.obs)
         return (dc.out)
     })
 
     output$data.structure <- renderText ({
+        if (is.null (input$dataset)) { return (NULL) }
         return (paste (capture.output (str (dc.out())), '\n'))
     })
 
     output$data.plot <- renderPlot ({
+        if (is.null (input$dataset)) { return (NULL) }
+        if (dc.out()$dim.nb == 0) { return (NULL) }
+        
         dc.plot <- dc.out()
         
         rank <- NULL
@@ -154,17 +205,28 @@ function (input, output) {
 
         data <- 'obs'
         if (input$user.normalisation || input$topic.normalisation || input$time.normalisation) { data <- 'obs/exp' }
-        
-        return (plot.data (dc.plot, data=data, rank=rank, display='display', sep.dim=sep.dim))
-    })
+
+        plot <- plot.data (dc.plot, data=data, rank=rank, display='display', sep.dim=sep.dim) +
+            theme (text=element_text (size=20))
+        return (plot)
+    }, height=900)
     
     output$outlier.plot <- renderPlot ({
-        return (plot.outliers (dc.out(), display='display', labels=input$outlier.labels))
-    })
+        if (is.null (input$dataset)) { return (NULL) }
+        if (dc.out()$dim.nb == 0) { return (NULL) }
+
+        labels <- input$outlier.labels && sum (dc.out()$data$out != 0) <= 100
+        plot <- plot.outliers (dc.out(), display='display', labels=labels) +
+            theme (text=element_text (size=20))
+        return (plot)
+    }, height=900)
 
     output$distribution.plot <- renderPlot ({
-        ##data.nb <- sum (abs (dc.dev$data$dev) < 1)
-        return (data.distribution (dc.dev2(), data='dev', threshold=input$outlier.threshold)) #+
-        ##coord_cartesian (ylim = c(0, data.nb / 300))
-    })
+        if (is.null (input$dataset)) { return (NULL) }
+        if (dc.dev2()$dim.nb == 0) { return (NULL) }
+
+        plot <- data.distribution (dc.dev2(), data='dev', threshold=input$outlier.threshold) +
+            theme (text=element_text (size=20))
+        return (plot)
+    }, height=450)
 }
