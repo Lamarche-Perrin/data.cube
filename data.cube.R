@@ -339,8 +339,6 @@ plot.data.data.cube <- function (dc, data='obs', rank=NULL, display=NULL, sep.di
     if (! is.null (rank)) { df <- df[order(df[[rank]]),] }
 
     dummy <- lapply (dc$dim.names, function (dim) { return (df[[dim]] <<- dc$elem.names[[dim]][df[[dim]]]) })
-    df$label <- apply (df, 1, function (row) { return (paste (row[dc$dim.names], collapse=', ')) })
-    df$label <- factor (df$label, levels=unique(df$label))
     
     ##df <- df [do.call ('order', data[,dc$dim.names,drop=FALSE]),]
 
@@ -354,12 +352,17 @@ plot.data.data.cube <- function (dc, data='obs', rank=NULL, display=NULL, sep.di
     else { df$data <- df[[data]] }
 
     if (is.null (sep.dim)) {
+        df$label <- apply (df, 1, function (row) { return (paste (row[dc$dim.names], collapse=', ')) })
+        df$label <- factor (df$label, levels=unique(df$label))
+
         p <- ggplot (df, aes (x=label, y=data)) +
             geom_bar (stat="identity")
     }
 
     else {
         dim.names <- dc$dim.names[dc$dim.names != sep.dim]
+        df$label <- apply (df, 1, function (row) { return (paste (row[dim.names], collapse=', ')) })
+        df$label <- factor (df$label, levels=unique(df$label))
 
         p <- ggplot (df, aes(x=label, y=data)) +
             geom_bar (aes (fill=get(sep.dim)), position="dodge", stat="identity")

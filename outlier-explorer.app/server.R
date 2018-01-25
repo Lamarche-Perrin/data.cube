@@ -89,29 +89,33 @@ function (input, output) {
         output$topic.slider <- dim.slider ('topic')
         output$time.slider <- dim.slider ('time')
 
-        output$column2 <- renderUI ({
-            column (3,
-                    h4 ("Normalise data"),
-                    conditionalPanel (condition="input['user.selection'] != 'none'", checkboxInput ("user.normalisation", label="By users", value=FALSE)),
-                    conditionalPanel (condition="input['topic.selection'] != 'none'", checkboxInput ("topic.normalisation", label="By topics", value=FALSE)),
-                    conditionalPanel (condition="input['time.selection'] != 'none'", checkboxInput ("time.normalisation", label="By weeks", value=FALSE)),
-                    radioButtons ("deviation.type", label=h4("Statistical test"), inline=TRUE,
-                                  choices=c("Poisson test"="poisson", "KL Divergence"="KLdiv")),
-                    numericInput ("outlier.threshold", label=h4("Outlier threshold"), 3, min=1, step=1),
-                    checkboxInput ("outlier.labels", label="Display outlier labels", value=FALSE)
-                    )
+        output$input.panel.2 <- renderUI ({
+            wellPanel (
+                h4 ("Normalise data"),
+                conditionalPanel (condition="input['user.selection'] != 'none'", checkboxInput ("user.normalisation", label="By users", value=FALSE)),
+                conditionalPanel (condition="input['topic.selection'] != 'none'", checkboxInput ("topic.normalisation", label="By topics", value=FALSE)),
+                conditionalPanel (condition="input['time.selection'] != 'none'", checkboxInput ("time.normalisation", label="By weeks", value=FALSE)),
+                radioButtons ("deviation.type", label=h4("Statistical test"), inline=TRUE,
+                              choices=c("Poisson test"="poisson", "KL Divergence"="KLdiv")),
+                numericInput ("outlier.threshold", label=h4("Outlier threshold"), 3, min=1, step=1),
+                checkboxInput ("outlier.labels", label="Display outlier labels", value=FALSE)
+            )
         })
 
-        output$column3 <- renderUI ({
-            column (3,
-                    numericInput ("min.obs", label=h4("Filter data (min value)"), 1, min=0, step=1)
-                    )
+        output$input.panel.3 <- renderUI ({
+            wellPanel (
+                numericInput ("min.obs", label=h4("Filter data (min value)"), 1, min=0, step=1)
+            )
         })
         
         return (dc)
     })
 
-    ## Sever computation
+
+
+    ## DATA CUBE SCRIPTS
+
+    ## DIMENSION SELECTION
     dc.agg <- reactive ({
         if (is.null (input$dataset)) { return (NULL) }
         
@@ -134,12 +138,13 @@ function (input, output) {
         if (input$topic.selection == 'none') { dims <- append(dims,'topic') }
         if (input$time.selection == 'none') { dims <- append(dims,'time') }
         if (length(dims) > 0) { dc.agg <- remove.dims (dc.agg, dims) }
-
-        ## dc.agg <- compute.margins (dc.agg)
         
         return (dc.agg)
     })
 
+
+    ## DATA NORMALISATION
+    
     dc.dev1 <- reactive ({
         if (is.null (input$dataset)) { return (NULL) }
 

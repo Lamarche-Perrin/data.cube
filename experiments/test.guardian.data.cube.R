@@ -13,6 +13,17 @@ dc <- as.data.cube (df)
 str(dc)
 
 
+## TEST 2D DATA PLOT
+dc.out <- remove.dims (dc, dims='user')
+
+elems <- list()
+elems$topic <- dc.out$elem.names$topic[dc.out$margins$topic$cells$topic[order(-dc.out$margins$topic$data$obs)[1:5]]]
+dc.out <- select.elems (dc.out, elems)
+
+str(dc.out)
+plot.data (dc.out, sep.dim='topic')
+
+
 ## BUILDING LIST OF OUTLIERS
 
 dc.out <- remove.dims (dc, dims='user')

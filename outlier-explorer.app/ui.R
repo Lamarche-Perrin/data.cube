@@ -24,37 +24,43 @@
 library ('shiny')
 
 fluidPage (
-    img (src='images/odycceus_logo.png', align = "right", height=90),
+    img (src='images/odycceus_logo.png', align="right", height=90),
     uiOutput ("app.title"),
     fluidRow (
-        column (3,
-                radioButtons ("dataset", label=h4("Select dataset"),
-                              choices=c(
-                                  "Guardian Comments (2016)"="guardian.2016",
-                                  "Twitter Politics (EU)"="twitter.eu",
-                                  "Twitter Politics (FR)"="twitter.fr",
-                                  "Opinion Model"="opinion.traces"
-                              ), selected=character(0)),
-                conditionalPanel (condition="$('html').hasClass('shiny-busy')", img (src="images/busy2.gif", height=90, width=91))
+        column (2,
+                inputPanel (
+                    radioButtons ("dataset", label=h4("Select dataset"),
+                                  choices=c(
+                                      "Guardian Comments (2016)"="guardian.2016",
+                                      "Twitter Politics (EU)"="twitter.eu",
+                                      "Twitter Politics (FR)"="twitter.fr",
+                                      "Opinion Model"="opinion.traces"
+                                  ), selected=character(0))
+                ),
+                conditionalPanel (condition="$('html').hasClass('shiny-busy')", div (img (src="images/busy2.gif", height=90), style="text-align: center;"))
                 ),
         column (3,
-                uiOutput ("user.buttons"),
-                uiOutput ("user.list"),
-                uiOutput ("user.slider"),
-                uiOutput ("topic.buttons"),
-                uiOutput ("topic.list"), 
-                uiOutput ("topic.slider"),
-                uiOutput ("time.buttons"),
-                uiOutput ("time.list"),
-                uiOutput ("time.slider")
+                conditionalPanel (
+                    condition="(typeof input.dataset !== 'undefined' && input.dataset.length > 0)",
+                    wellPanel (
+                        uiOutput ("user.buttons"),
+                        uiOutput ("user.list"),
+                        uiOutput ("user.slider"),
+                        uiOutput ("topic.buttons"),
+                        uiOutput ("topic.list"), 
+                        uiOutput ("topic.slider"),
+                        uiOutput ("time.buttons"),
+                        uiOutput ("time.list"),
+                        uiOutput ("time.slider")
+                    )
+                )
                 ),
-        uiOutput ("column2"),
-        uiOutput ("column3")
-                
+        column (2, uiOutput ("input.panel.2")),
+        column (2, uiOutput ("input.panel.3"))                
     ),
     hr (),
     conditionalPanel(
-        condition = "(typeof input.dataset !== 'undefined' && input.dataset.length > 0)",
+        condition="(typeof input.dataset !== 'undefined' && input.dataset.length > 0)",
         mainPanel (
             tabsetPanel (type="tabs",
                          tabPanel ("Data structure", verbatimTextOutput (outputId="data.structure")),
