@@ -12,3 +12,5 @@ inst/doc
 
 # DATA FILES
 rsconnect
+*.mat
+*.raw.csv

@@ -28,7 +28,12 @@ fluidPage (
     fluidRow (
         column (3,
                 radioButtons ("dataset", label=h4("Select dataset"),
-                              choices=c("Guardian comments (2016)"="guardian.2016", "Twitter politics (FR)"="twitter.fr"), selected=character(0)),
+                              choices=c(
+                                  "Guardian Comments (2016)"="guardian.2016",
+                                  "Twitter Politics (EU)"="twitter.eu",
+                                  "Twitter Politics (FR)"="twitter.fr",
+                                  "Opinion Model"="opinion.traces"
+                              ), selected=character(0)),
                 conditionalPanel (condition="$('html').hasClass('shiny-busy')", img (src="../images/busy2.gif", height = 90, width = 91))
                 ),
         column (3,

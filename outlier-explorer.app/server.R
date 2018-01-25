@@ -123,9 +123,9 @@ function (input, output) {
         if (length(elems) > 0) { dc.agg <- select.elems (dc.agg, elems) }
 
         elems <- list()
-        if (input$user.selection == 'some') { elems[['user']] <- dc$elem.names$user[dc$margins$user$cells$user[order (-dc$margins$user$data$obs)[1:input$user.number]]] }
-        if (input$topic.selection == 'some') { elems[['topic']] <- dc$elem.names$topic[dc$margins$topic$cells$topic[order (-dc$margins$topic$data$obs)[1:input$topic.number]]] }
-        if (input$time.selection == 'some') { elems[['time']] <- dc$elem.names$time[dc$margins$time$cells$time[order (-dc$margins$time$data$obs)[1:input$time.number]]] }
+        if (input$user.selection == 'some') { elems[['user']] <- dc.agg$elem.names$user[dc.agg$margins$user$cells$user[order(-dc.agg$margins$user$data$obs)[1:input$user.number]]] }
+        if (input$topic.selection == 'some') { elems[['topic']] <- dc.agg$elem.names$topic[dc.agg$margins$topic$cells$topic[order(-dc.agg$margins$topic$data$obs)[1:input$topic.number]]] }
+        if (input$time.selection == 'some') { elems[['time']] <- dc.agg$elem.names$time[dc.agg$margins$time$cells$time[order(-dc.agg$margins$time$data$obs)[1:input$time.number]]] }
         if (length(elems) > 0) { dc.agg <- select.elems (dc.agg, elems) }
 
         dims <- c()
