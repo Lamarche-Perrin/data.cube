@@ -149,8 +149,8 @@ function (input, output) {
             if (input$user.selection %in% c('all','some','one') && input$user.normalisation) { dims <- append(dims,'user') }
             if (input$topic.selection %in% c('all','some','one') && input$topic.normalisation) { dims <- append(dims,'topic') }
             if (input$time.selection %in% c('all','some','one') && input$time.normalisation) { dims <- append(dims,'time') }
-            
-            dc.dev1 <- compute.expected (dc.agg(), dims=dims)
+
+            dc.dev1 <- compute.expected (dc.dev1, dims=dims)
         }
 
         return (dc.dev1)
@@ -204,7 +204,7 @@ function (input, output) {
         }
 
         data <- 'obs'
-        if (input$user.normalisation || input$topic.normalisation || input$time.normalisation) { data <- 'obs/exp' }
+        if (input$user.selection %in% c('all','some','one') && input$user.normalisation || input$topic.selection %in% c('all','some','one') && input$topic.normalisation || input$time.selection %in% c('all','some','one') && input$time.normalisation) { data <- 'obs/exp' }
 
         plot <- plot.data (dc.plot, data=data, rank=rank, display='display', sep.dim=sep.dim) +
             theme (text=element_text (size=20))
