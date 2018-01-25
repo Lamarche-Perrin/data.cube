@@ -54,13 +54,24 @@ as.data.cube.data.frame <- function (df, data.cols=c('obs')) {
 
 is.data.cube <- function (obj) { inherits (obj, "data.cube") }
 
-as.data.frame.data.cube <- function (dc) {
-    cells <- lapply (dc$dim.names, function (dim) { return (dc$elem.names[[dim]][dc$cells[[dim]]]) })
-    names (cells) <- dc$dim.names
+as.data.frame.data.cube <- function (dc, display=NULL, rank=NULL) {
+    df <- as.data.frame (cbind (as.data.frame (dc$cells), as.data.frame (dc$data)))
 
-    df <- as.data.frame (append (cells, dc$data), stringsAsFactors=FALSE)
-    str(df)
-    return (as.data.frame (append (cells, dc$data), stringsAsFactors=FALSE))
+    if (! is.null (display))
+    {
+        df <- df[df[[display]],]
+        df[[display]] <- NULL
+    }
+    
+    if (! is.null (rank))
+    {
+        df <- df[order(df[[rank]]),]
+        df[[rank]] <- NULL
+    }
+
+    dummy <- lapply (dc$dim.names, function (dim) { return (df[[dim]] <<- dc$elem.names[[dim]][df[[dim]]]) })
+
+    return (df)
 }
 
 ## Compute margins

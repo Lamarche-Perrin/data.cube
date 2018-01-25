@@ -229,4 +229,32 @@ function (input, output) {
             theme (text=element_text (size=20))
         return (plot)
     }, height=450)
+
+    output$positive.outlier.list <- renderDataTable ({
+        if (is.null (input$dataset)) { return (NULL) }
+        if (dc.out()$dim.nb == 0) { return (NULL) }
+
+        dc.list <- dc.out()
+        dc.list$data$display <- (dc.list$data$out == 1)
+        dc.list$data$rank <- rank (-dc.list$data$dev)
+
+        df <- as.data.frame (dc.list, display='display', rank='rank')
+        df$out <- NULL
+
+        return (df)
+    })
+
+    output$negative.outlier.list <- renderDataTable ({
+        if (is.null (input$dataset)) { return (NULL) }
+        if (dc.out()$dim.nb == 0) { return (NULL) }
+
+        dc.list <- dc.out()
+        dc.list$data$display <- (dc.list$data$out == -1)
+        dc.list$data$rank <- rank (dc.list$data$dev)
+
+        df <- as.data.frame (dc.list, display='display', rank='rank')
+        df$out <- NULL
+
+        return (df)
+    })
 }

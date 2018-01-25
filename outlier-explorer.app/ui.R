@@ -64,9 +64,11 @@ fluidPage (
                                        column (4, plotOutput (outputId="distribution.plot"))
                                    )
                                    ),
-                         tabPanel ("Outlier list",
-                                   verbatimTextOutput (outputId="positive.outlier.list"),
-                                   verbatimTextOutput (outputId="negative.outlier.list")
+                         tabPanel ("Outlier lists",
+                                   fluidRow (
+                                       column (6, dataTableOutput (outputId="positive.outlier.list")),
+                                       column (6, dataTableOutput (outputId="negative.outlier.list"))
+                                   )
                                    )
                          ), style="width: 100%;"
         )

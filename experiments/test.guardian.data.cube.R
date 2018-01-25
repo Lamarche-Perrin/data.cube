@@ -12,6 +12,24 @@ df <- read.csv ('../data/guardian.small.csv', stringsAsFactors=FALSE)
 dc <- as.data.cube (df)
 str(dc)
 
+
+## BUILDING LIST OF OUTLIERS
+
+dc.out <- remove.dims (dc, dims='user')
+dc.out <- compute.expected (dc.out, dims=c('topic','time'))
+dc.out <- compute.deviated (dc.out)
+dc.out <- compute.outliers (dc.out, threshold=3)
+
+dc.out$data$display <- dc.out$data$out == 1
+dc.out$data$rank <- rank (-dc.out$data$dev)
+
+df <- as.data.frame (dc.out, display='display', rank='rank')
+df$out <- NULL
+
+df
+
+## VARIOUS TESTS
+
 dc.empty <- remove.dims (dc, dims=c('user','topic','time'))
 str(dc.empty)
 
