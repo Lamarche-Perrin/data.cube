@@ -24,6 +24,7 @@
 library ('shiny')
 
 fluidPage (
+    img (src='images/odycceus_logo.png', align = "right", height=90),
     uiOutput ("app.title"),
     fluidRow (
         column (3,
@@ -34,7 +35,7 @@ fluidPage (
                                   "Twitter Politics (FR)"="twitter.fr",
                                   "Opinion Model"="opinion.traces"
                               ), selected=character(0)),
-                conditionalPanel (condition="$('html').hasClass('shiny-busy')", img (src="../images/busy2.gif", height = 90, width = 91))
+                conditionalPanel (condition="$('html').hasClass('shiny-busy')", img (src="images/busy2.gif", height=90, width=91))
                 ),
         column (3,
                 uiOutput ("user.buttons"),
