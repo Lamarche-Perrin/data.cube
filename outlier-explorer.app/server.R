@@ -22,6 +22,7 @@
 ## with this program. If not, see <http://www.gnu.org/licenses/>.
 
 library ('shiny')
+library ('rjson')
 
 source ('../data.cube.R')
 
@@ -176,12 +177,14 @@ function (input, output) {
         return (dc.out)
     })
 
+    ## DATA STRUCTURE
     output$data.structure <- renderText ({
         if (is.null (input$dataset)) { return (NULL) }
         return (paste (capture.output (str (dc.out())), '\n'))
     })
 
-    output$data.plot <- renderPlot ({
+    ## DATA PLOT
+    data.plot <- reactive ({
         if (is.null (input$dataset)) { return (NULL) }
         if (dc.out()$dim.nb == 0) { return (NULL) }
         
@@ -209,9 +212,23 @@ function (input, output) {
         plot <- plot.data (dc.plot, data=data, rank=rank, display='display', sep.dim=sep.dim) +
             theme (text=element_text (size=20))
         return (plot)
-    }, height=900)
+    })
+
+    output$data.plot <- renderPlot ({ data.plot() }, height=900)
     
-    output$outlier.plot <- renderPlot ({
+    output$download.data.plot.pdf <- downloadHandler (
+        filename = function () { "data.plot.pdf" },
+        content = function (filename) { ggsave (filename, plot=data.plot(), device='pdf') } 
+    )
+
+    output$download.data.plot.png <- downloadHandler (
+        filename = function () { "data.plot.png" },
+        content = function (filename) { ggsave (filename, plot=data.plot(), device='png') } 
+    )
+
+    
+    ## OUTLIER PLOT
+    outlier.plot <- reactive ({
         if (is.null (input$dataset)) { return (NULL) }
         if (dc.out()$dim.nb == 0) { return (NULL) }
 
@@ -219,8 +236,22 @@ function (input, output) {
         plot <- plot.outliers (dc.out(), display='display', labels=labels) +
             theme (text=element_text (size=20))
         return (plot)
-    }, height=900)
+    })
+    
+    output$outlier.plot <- renderPlot ({ outlier.plot() }, height=900)
+    
+    output$download.outlier.plot.pdf <- downloadHandler (
+        filename = function () { "outlier.plot.pdf" },
+        content = function (filename) { ggsave (filename, plot=outlier.plot(), device='pdf') } 
+    )
 
+    output$download.outlier.plot.png <- downloadHandler (
+        filename = function () { "outlier.plot.png" },
+        content = function (filename) { ggsave (filename, plot=outlier.plot(), device='png') } 
+    )
+
+
+    ## DISTRIBUTION PLOT
     output$distribution.plot <- renderPlot ({
         if (is.null (input$dataset)) { return (NULL) }
         if (dc.dev2()$dim.nb == 0) { return (NULL) }
@@ -230,7 +261,9 @@ function (input, output) {
         return (plot)
     }, height=450)
 
-    output$positive.outlier.list <- renderDataTable ({
+
+    ## OUTLIER LISTS
+    positive.outlier.list <- reactive ({
         if (is.null (input$dataset)) { return (NULL) }
         if (dc.out()$dim.nb == 0) { return (NULL) }
 
@@ -243,8 +276,21 @@ function (input, output) {
 
         return (df)
     })
+    
+    output$positive.outlier.list <- renderDataTable ({ positive.outlier.list() })
 
-    output$negative.outlier.list <- renderDataTable ({
+    output$download.positive.outlier.list.csv <- downloadHandler (
+        filename = function () { "positive.outlier.list.csv" },
+        content = function (filename) { write.csv (positive.outlier.list(), filename, row.names=FALSE) } 
+    )
+
+    output$download.positive.outlier.list.json <- downloadHandler (
+        filename = function () { "positive.outlier.list.json" },
+        content = function (filename) { write (toJSON (unname (split (positive.outlier.list(), 1:nrow(positive.outlier.list())))), filename) }
+    )
+
+
+    negative.outlier.list <- reactive ({
         if (is.null (input$dataset)) { return (NULL) }
         if (dc.out()$dim.nb == 0) { return (NULL) }
 
@@ -257,4 +303,16 @@ function (input, output) {
 
         return (df)
     })
+
+    output$negative.outlier.list <- renderDataTable ({ negative.outlier.list() })
+
+    output$download.negative.outlier.list.csv <- downloadHandler (
+        filename = function () { "negative.outlier.list.csv" },
+        content = function (filename) { write.csv (negative.outlier.list(), filename, row.names=FALSE) } 
+        )
+
+    output$download.negative.outlier.list.json <- downloadHandler (
+        filename = function () { "negative.outlier.list.json" },
+        content = function (filename) { write (toJSON (unname (split (negative.outlier.list(), 1:nrow(negative.outlier.list())))), filename) }
+    )
 }

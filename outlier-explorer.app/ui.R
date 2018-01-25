@@ -58,17 +58,28 @@ fluidPage (
         mainPanel (
             tabsetPanel (type="tabs",
                          tabPanel ("Data structure", verbatimTextOutput (outputId="data.structure")),
-                         tabPanel ("Data plot", plotOutput (outputId="data.plot")),
+                         tabPanel ("Data plot",
+                                   downloadButton (outputId="download.data.plot.pdf", label="Download plot (pdf)"),
+                                   downloadButton (outputId="download.data.plot.png", label="Download plot (png)"),
+                                   plotOutput (outputId="data.plot")),
                          tabPanel ("Outlier plot",
+                                   downloadButton (outputId="download.outlier.plot.pdf", label="Download plot (pdf)"),                                   
+                                   downloadButton (outputId="download.outlier.plot.png", label="Download plot (png)"),                                   
                                    fluidRow (
-                                       column (8, plotOutput (outputId="outlier.plot")),
-                                       column (4, plotOutput (outputId="distribution.plot"))
+                                       column (9, plotOutput (outputId="outlier.plot")),
+                                       column (3, plotOutput (outputId="distribution.plot"))
                                    )
                                    ),
                          tabPanel ("Outlier lists",
                                    fluidRow (
-                                       column (6, dataTableOutput (outputId="positive.outlier.list")),
-                                       column (6, dataTableOutput (outputId="negative.outlier.list"))
+                                       column (6,
+                                               downloadButton (outputId="download.positive.outlier.list.csv", label="Download list (csv)"),
+                                               downloadButton (outputId="download.positive.outlier.list.json", label="Download list (json)"),
+                                               dataTableOutput (outputId="positive.outlier.list")),
+                                       column (6,
+                                               downloadButton (outputId="download.negative.outlier.list.csv", label="Download list (csv)"),
+                                               downloadButton (outputId="download.negative.outlier.list.json", label="Download list (json)"),
+                                               dataTableOutput (outputId="negative.outlier.list"))
                                    )
                                    )
                          ), style="width: 100%;"
