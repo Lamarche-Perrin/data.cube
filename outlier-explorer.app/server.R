@@ -28,12 +28,12 @@ source ('../data.cube.R')
 
 function (input, output) {
 
-    output$app.title <- renderUI ({ titlePanel ('Outlier Explorer') })
+    output$app.title <- renderUI ({ 'Outlier Explorer' })
 
     dc <-  reactive ({
         if (is.null (input$dataset)) { return (NULL) }
         
-        output$app.title <- renderUI ({ titlePanel (paste ('Outlier Explorer - ', input$dataset, sep='')) })
+        output$app.title <- renderUI ({ paste ('Outlier Explorer - ', input$dataset, sep='') })
 
         file <- paste ('../data/', input$dataset, '.csv', sep='')
         cat (file=stderr(), file, "\n")
@@ -191,7 +191,7 @@ function (input, output) {
     ## DATA PLOT
     data.plot <- reactive ({
         if (is.null (input$dataset)) { return (NULL) }
-        if (dc.out()$dim.nb == 0) { return (NULL) }
+        if (dc.out()$dim.nb == 0 || length (dc.out()$data$obs) == 0) { return (NULL) }
         
         dc.plot <- dc.out()
         
@@ -235,7 +235,7 @@ function (input, output) {
     ## OUTLIER PLOT
     outlier.plot <- reactive ({
         if (is.null (input$dataset)) { return (NULL) }
-        if (dc.out()$dim.nb == 0) { return (NULL) }
+        if (dc.out()$dim.nb == 0 || length (dc.out()$data$obs) == 0) { return (NULL) }
 
         labels <- input$outlier.labels && sum (dc.out()$data$out != 0) <= 100
         plot <- plot.outliers (dc.out(), display='display', labels=labels) +
@@ -259,7 +259,7 @@ function (input, output) {
     ## DISTRIBUTION PLOT
     output$distribution.plot <- renderPlot ({
         if (is.null (input$dataset)) { return (NULL) }
-        if (dc.dev2()$dim.nb == 0) { return (NULL) }
+        if (dc.dev2()$dim.nb == 0 || length (dc.dev2()$data$obs) == 0) { return (NULL) }
 
         plot <- data.distribution (dc.dev2(), data='dev', threshold=input$outlier.threshold) +
             theme (text=element_text (size=20))

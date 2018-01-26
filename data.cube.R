@@ -196,10 +196,10 @@ remove.dims.data.cube <- function (dc, dims) {
     dc$dim.names <- dc$dim.names [! dc$dim.names %in% dims]
     dc$dim.nb <- length (dc$dim.names)
 
-    if (dc$dim.nb > 0) {
+    if (dc$dim.nb > 0 && length (dc$cells[[1]]) > 0) {
         agg <- aggregate (dc$data, by=dc$cells, FUN=sum)
-        dc$cells <- agg [dc$dim.names]
-        dc$data <- agg [names (dc$data)]
+        dc$cells <- as.list (agg [dc$dim.names])
+        dc$data <- as.list (agg [names (dc$data)])
     } else { for (dat in names (dc$data)) { dc$data[[dat]] <- NULL } }
     
     return (dc)
@@ -256,6 +256,7 @@ compute.deviated.data.cube <- function (dc, input='obs', model='exp', output='de
                                      ppois (dc$data[[input]], dc$data[[model]], lower.tail=TRUE, log.p=TRUE),
                                      -ppois (dc$data[[input]], dc$data[[model]], lower.tail=FALSE, log.p=TRUE)
                                      )
+        if (length (dc$data[[output]]) == 0) { dc$data[[output]] <- numeric(0) }
     }
 
     return (dc)
@@ -268,7 +269,8 @@ compute.outliers.data.cube <- function (dc, deviation='dev', outlier='out', thre
     dev.mean <- mean (dc$data[[deviation]])
     dev.sd <- sd (dc$data[[deviation]])
 
-    dc$data[[outlier]] <- findInterval (dc$data[[deviation]], dev.mean + dev.sd * threshold * c(-1,1)) - 1
+    if (is.na (dev.sd)) { dc$data[[outlier]] <- rep (0, length(dc$data[[deviation]])) }
+    else { dc$data[[outlier]] <- findInterval (dc$data[[deviation]], dev.mean + dev.sd * threshold * c(-1,1)) - 1 }
 
     return (dc)
 }
@@ -336,6 +338,8 @@ plot.data.data.cube <- function (dc, data='obs', rank=NULL, display=NULL, sep.di
     df <- as.data.frame (cbind (as.data.frame (dc$cells), as.data.frame (dc$data)))
 
     if (! is.null (display)) { df <- df[df[[display]],] }
+    if (nrow(df) == 0) { return (NULL); }
+    
     if (! is.null (rank)) { df <- df[order(df[[rank]]),] }
 
     dummy <- lapply (dc$dim.names, function (dim) { return (df[[dim]] <<- dc$elem.names[[dim]][df[[dim]]]) })
@@ -386,16 +390,25 @@ plot.outliers.data.cube <- function (dc, input='obs', model='exp', deviation='de
     df <- as.data.frame (cbind (as.data.frame (dc$cells), as.data.frame (dc$data)))
 
     if (! is.null (display)) { df <- df[df[[display]],] }
+    if (nrow(df) == 0) { return (NULL); }
+
     dummy <- lapply (dc$dim.names, function (dim) { return (df[[dim]] <<- dc$elem.names[[dim]][df[[dim]]]) })
     df$label <- apply (df, 1, function (row) paste (row[dc$dim.names], collapse=' '))
 
     df$ratio <- df$obs / df$exp
     df$type <- ifelse (df[[outlier]] == 0, 'normal', 'abnormal')
-    
+
+    shape.values <- c(22,21)
+    types <- unique (df$type)
+    if (length(types) == 1) {
+        if (types == 'normal') { shape.values <- c(21) }
+        else if (types == 'abnormal') { shape.values <- c(22) }
+    }
+        
     p <- ggplot (data=df, aes (x=get(input), y=ratio)) +
         scale_x_log10 () + scale_y_log10 () +
         geom_point (aes (size=abs(dev), fill=dev, shape=type)) +
-        scale_shape_manual (values=c(22,21)) +
+        scale_shape_manual (values=shape.values) +
         scale_fill_gradient2 (low='blue', high='red') +
         labs (title='Outliers') + xlab (input) + ylab (paste (input, '/', model)) +
         theme_bw () ##+ theme (text=elem_text (size=20))

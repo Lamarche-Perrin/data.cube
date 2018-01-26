@@ -1,7 +1,7 @@
 rm(list=ls())
 source ('../data.cube.R')
 
-df <- read.csv ('../data/guardian.small.csv', stringsAsFactors=FALSE)
+df <- read.csv ('../data/guardian.2016.csv', stringsAsFactors=FALSE)
 
 ## prevM <- function (x) { return (7 * floor(as.numeric(x-1+4) / 7) + as.Date(1-4,origin = "1970-01-01")) }
 ## df$time <- prevM (as.Date (df$time))
@@ -12,6 +12,18 @@ df <- read.csv ('../data/guardian.small.csv', stringsAsFactors=FALSE)
 dc <- as.data.cube (df)
 str(dc)
 
+
+## TEST BASICS
+
+dc.test <- select.elems (dc, elems=list(time="2016-01-04",topic="ABC"))
+dc.test <- remove.dims (dc.test, dims=c('user'))
+dc.test <- compute.expected (dc.test, dims=c())
+dc.test <- compute.deviated (dc.test, type="poisson")
+dc.test <- compute.outliers (dc.test)
+
+plot.data (dc.test)
+plot.outliers (dc.test)
+str(dc.test)
 
 ## TEST 2D DATA PLOT
 dc.out <- remove.dims (dc, dims='user')
