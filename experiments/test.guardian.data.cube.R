@@ -43,6 +43,11 @@ dc.out <- compute.expected (dc.out, dims=c('topic','time'))
 dc.out <- compute.deviated (dc.out)
 dc.out <- compute.outliers (dc.out, threshold=3)
 
+plot <- plot.outliers (dc.out)
+plot + xlab ('Number of comments') +
+    ylab ('Ratio of observed comments vs. expected comments') +
+    guides (fill=guide_colourbar(title='Deviation', order=1), size=guide_legend(title='Absolute\n deviation'), shape=guide_legend(title='Outliers'))
+
 dc.out$data$display <- dc.out$data$out == 1
 dc.out$data$rank <- rank (-dc.out$data$dev)
 

@@ -30,6 +30,14 @@ function (input, output) {
 
     output$app.title <- renderUI ({ 'Outlier Explorer' })
 
+    dim.str <- function (dim.name, plural=FALSE) {
+        if (dim.name == 'user') { str <- 'User' }
+        if (dim.name == 'topic') { str <- 'Topic' }
+        if (dim.name == 'time') { str <- 'Week' }
+        if (plural) { str <- paste (str, 's', sep='') }
+        return (str)
+    }
+    
     dc <-  reactive ({
         if (is.null (input$dataset)) { return (NULL) }
         
@@ -44,15 +52,15 @@ function (input, output) {
         ## Dimension selection
         dim.buttons <- function (dim, label=dim) {
             choices <- c('all', 'some', 'one', 'none')
-            names(choices) <- c(paste('All (', dc$elem.nb[[dim]], ')', sep=''), 'Some', 'One', 'None (aggregate)')
+            names(choices) <- c(paste('All (', dc$elem.nb[[dim]], ')', sep=''), 'Some', 'One', 'None')
             return (renderUI ({ radioButtons (paste(dim, '.selection', sep=''), label=h4(label), inline=TRUE,
                                               choices=choices, selected='none')
             }))
         }
         
-        output$user.buttons <- dim.buttons ('user', 'Users')
-        output$topic.buttons <- dim.buttons ('topic', 'Topics')
-        output$time.buttons <- dim.buttons ('time', 'Weeks')
+        output$user.buttons <- dim.buttons ('user', 'Select users')
+        output$topic.buttons <- dim.buttons ('topic', 'Select topics')
+        output$time.buttons <- dim.buttons ('time', 'Select weeks')
         
         ## Selection list
         head.selection <- 1000
@@ -95,9 +103,9 @@ function (input, output) {
                 conditionalPanel (condition="input['user.selection'] != 'none'", checkboxInput ("user.normalisation", label="By users", value=FALSE)),
                 conditionalPanel (condition="input['topic.selection'] != 'none'", checkboxInput ("topic.normalisation", label="By topics", value=FALSE)),
                 conditionalPanel (condition="input['time.selection'] != 'none'", checkboxInput ("time.normalisation", label="By weeks", value=FALSE)),
-                radioButtons ("deviation.type", label=h4("Statistical test"), inline=TRUE,
+                radioButtons ("deviation.type", label=h4("Perform statistical test"), inline=TRUE,
                               choices=c("Poisson test"="poisson", "KL Divergence"="KLdiv")),
-                numericInput ("outlier.threshold", label=h4("Outlier threshold"), 3, min=1, step=1),
+                numericInput ("outlier.threshold", label=h5("Outlier threshold"), 3, min=1, step=1),
                 checkboxInput ("outlier.labels", label="Display outlier labels", value=FALSE)
             )
         })
@@ -216,6 +224,19 @@ function (input, output) {
 
         plot <- plot.data (dc.plot, data=data, rank=rank, display='display', sep.dim=sep.dim) +
             theme (text=element_text (size=20))
+
+        if (! is.null (sep.dim)) { dims <- dims [dims != sep.dim] }
+        xlab.str <- paste (sapply (dims, function (dim) { return (dim.str (dim, TRUE)) }), collapse=' x ')
+        plot <- plot + xlab (xlab.str)
+        
+        if (data == 'obs') { plot <- plot + ylab ('Number of comments') }
+        else if (data == 'obs/exp') { plot <- plot + ylab ('Ratio of observed comments vs. expected comments') }
+
+        if (! is.null (sep.dim)) {
+            fill.str <- dim.str (sep.dim, TRUE)
+            plot <- plot + guides (fill=guide_legend(title=fill.str))
+        }
+        
         return (plot)
     })
 
@@ -240,6 +261,16 @@ function (input, output) {
         labels <- input$outlier.labels && sum (dc.out()$data$out != 0) <= 100
         plot <- plot.outliers (dc.out(), display='display', labels=labels) +
             theme (text=element_text (size=20))
+
+        plot <- plot + ggtitle ('') +
+            xlab ('Number of comments') +
+            ylab ('Ratio of observed comments vs. expected comments') +
+            guides (
+                fill = guide_colourbar (title='Deviation', order=1),
+                size = guide_legend (title='Absolute\ndeviation', order=2),
+                shape = guide_legend (title='Outliers', order=3)
+            )
+
         return (plot)
     })
     
@@ -263,6 +294,9 @@ function (input, output) {
 
         plot <- data.distribution (dc.dev2(), data='dev', threshold=input$outlier.threshold) +
             theme (text=element_text (size=20))
+
+        plot <- plot + ggtitle ('') + xlab ('Deviation') + ylab ('Number of observations')
+
         return (plot)
     }, height=450)
 

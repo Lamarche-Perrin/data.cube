@@ -344,8 +344,6 @@ plot.data.data.cube <- function (dc, data='obs', rank=NULL, display=NULL, sep.di
 
     dummy <- lapply (dc$dim.names, function (dim) { return (df[[dim]] <<- dc$elem.names[[dim]][df[[dim]]]) })
     
-    ##df <- df [do.call ('order', data[,dc$dim.names,drop=FALSE]),]
-
     ratio.index <- regexpr ('/', data)
 
     if (ratio.index != -1) {
@@ -396,20 +394,21 @@ plot.outliers.data.cube <- function (dc, input='obs', model='exp', deviation='de
     df$label <- apply (df, 1, function (row) paste (row[dc$dim.names], collapse=' '))
 
     df$ratio <- df$obs / df$exp
-    df$type <- ifelse (df[[outlier]] == 0, 'normal', 'abnormal')
+    df$type <- ifelse (df[[outlier]] == 0, 'normal', 'outlier')
 
-    shape.values <- c(22,21)
+    shape.values <- c(21,22)
     types <- unique (df$type)
     if (length(types) == 1) {
         if (types == 'normal') { shape.values <- c(21) }
-        else if (types == 'abnormal') { shape.values <- c(22) }
+        else if (types == 'outlier') { shape.values <- c(22) }
     }
-        
+    
     p <- ggplot (data=df, aes (x=get(input), y=ratio)) +
         scale_x_log10 () + scale_y_log10 () +
-        geom_point (aes (size=abs(dev), fill=dev, shape=type)) +
+        geom_point (aes (fill=dev, size=abs(dev), shape=type)) +
         scale_shape_manual (values=shape.values) +
         scale_fill_gradient2 (low='blue', high='red') +
+        geom_hline (yintercept=1) + 
         labs (title='Outliers') + xlab (input) + ylab (paste (input, '/', model)) +
         theme_bw () ##+ theme (text=elem_text (size=20))
 
