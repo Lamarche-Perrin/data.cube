@@ -1,0 +1,62 @@
+{
+	"dataset": "guardian.2016",
+	"select": [
+		{
+			"dim": "week",
+			"select": "all"
+		},
+		{
+			"dim": "topic",
+			"select": "some",
+			"head": 5
+		},
+		{
+			"dim": "user",
+			"select": "some",
+			"list": ["15131989"]
+		}
+	],
+	"normalise": ["week", "topic"],
+	"stat.test": {
+		"type": "poisson",
+		"threshold": 3
+	}
+}
+
+{
+	"positive.outliers": [
+		{
+			"user": 15131989,
+			"topic": "Climate_change",
+			"time": "2016-03-21",
+			"obs": 71.8945970695971,
+			"exp": 0.0233924436846781,
+			"dev": 509.386101943421
+		},
+		{
+			"user": 15131989,
+			"topic": "Environment",
+			"time": "2016-03-21",
+			"obs": 69.6945970695971,
+			"exp": 0.0208844306984493,
+			"dev": 501.272227626884
+		},
+		{
+			"user": 15131989,
+			"topic": "Environment",
+			"time": "2016-08-01",
+			"obs": 70.3107142857143,
+			"exp": 0.0374052879552646,
+			"dev": 468.040575953425
+		},
+		{
+			"user": 15131989,
+			"topic": "Climate_change",
+			"time": "2016-08-01",
+			"obs": 71.3107142857143,
+			"exp": 0.041897292037157,
+			"dev": 467.442166757629
+		}
+	],
+	"negative.outliers": []
+}

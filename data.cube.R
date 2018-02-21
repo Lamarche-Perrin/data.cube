@@ -26,6 +26,7 @@ library ('scales')
 library ('ggrepel')
 library ('reshape2')
 library ('cowplot')
+library ('rgl')
 
 ## Build data.cube from data.frame
 as.data.cube <- function (obj, ...) { UseMethod ('as.data.cube') }
@@ -445,3 +446,43 @@ list.outliers.data.cube <- function (dc, input='obs', model='exp', deviation='de
 }
 
 
+## Draw cube
+draw.cube <- function (obj, ...) { UseMethod ('draw.cube') }
+draw.cube.data.cube <- function (dc, dims=dc$dim.names, dim.dev=c()) {
+    open3d (userMatrix = rotationMatrix (pi/5,1,0,0) %*% rotationMatrix (pi/4,0,-1,0))
+    cell3d <- function (x, y, z, dx, dy, dz, color="green", alpha=1, lwd=5) {
+        shade3d (translate3d (scale3d (cube3d (color=color, alpha=alpha), dx/2, dy/2, dz/2), x+dx/2, y+dy/2, z+dz/2))
+        wire3d (translate3d (scale3d (cube3d (color="black"), dx/2, dy/2, dz/2), x+dx/2, y+dy/2, z+dz/2), lwd=lwd)
+    }
+
+    cv <- list()
+    dv <- list()
+
+    for (i in 1:3) {
+        if (dims[i] %in% dc$dim.names) {
+            cv[[i]] <- 1:min(length(dc$elem.names[[dims[i]]]),5)
+            dv[[i]] <- 1
+        } else {
+            cv[[i]] <- c(1)
+            dv[[i]] <- 5
+        }
+
+        if (dims[i] %in% dim.dev) {
+            cv[[i]] <- append(-1,cv[[i]])
+        }
+    }
+
+    for (x in cv[[1]]) {
+        for (y in cv[[2]]) {
+            for (z in cv[[3]]) {
+                if (x == -1) { dx <- 1 } else { dx <- dv[[1]] }
+                if (y == -1) { dy <- 1 } else { dy <- dv[[2]] }
+                if (z == -1) { dz <- 1 } else { dz <- dv[[3]] }
+                if (x == -1 || y == -1 || z == -1) { color <- "forestgreen" } else { color <- "green" }
+                cell3d (x, y, z, dx, dy, dz, color=color)
+            }
+        }
+    }
+
+    cell3d (1, 1, 1, 5, 5, 5, color="grey", alpha=0.1, lwd=3)
+}

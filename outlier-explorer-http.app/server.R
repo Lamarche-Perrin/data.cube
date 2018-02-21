@@ -125,6 +125,13 @@ function (input, output, session) {
 
 
     ## DATA CUBE SCRIPTS
+    query <- reactive ({ parseQueryString (session$clientData$url_search) })
+
+    user.selection <- reactive ({
+        if (! is.null (query()[['select.user']])) { return (query()[['select.user']]) }
+        else return (input$user.selection)
+    })
+
 
     ## DIMENSION SELECTION
     dc.agg <- reactive ({
@@ -133,19 +140,19 @@ function (input, output, session) {
         dc.agg <- dc()
 
         elems <- list()
-        if (input$user.selection == 'one') { elems[['user']] <- c(input$selected.user) }
+        if (user.selection() == 'one') { elems[['user']] <- c(input$selected.user) }
         if (input$topic.selection == 'one') { elems[['topic']] <- c(input$selected.topic) }
         if (input$time.selection == 'one') { elems[['time']] <- c(input$selected.time) }
         if (length(elems) > 0) { dc.agg <- select.elems (dc.agg, elems) }
 
         elems <- list()
-        if (input$user.selection == 'some') { elems[['user']] <- dc.agg$elem.names$user[dc.agg$margins$user$cells$user[order(-dc.agg$margins$user$data$obs)[1:input$user.number]]] }
+        if (user.selection() == 'some') { elems[['user']] <- dc.agg$elem.names$user[dc.agg$margins$user$cells$user[order(-dc.agg$margins$user$data$obs)[1:input$user.number]]] }
         if (input$topic.selection == 'some') { elems[['topic']] <- dc.agg$elem.names$topic[dc.agg$margins$topic$cells$topic[order(-dc.agg$margins$topic$data$obs)[1:input$topic.number]]] }
         if (input$time.selection == 'some') { elems[['time']] <- dc.agg$elem.names$time[dc.agg$margins$time$cells$time[order(-dc.agg$margins$time$data$obs)[1:input$time.number]]] }
         if (length(elems) > 0) { dc.agg <- select.elems (dc.agg, elems) }
 
         dims <- c()
-        if (input$user.selection == 'none') { dims <- append(dims,'user') }
+        if (user.selection() == 'none') { dims <- append(dims,'user') }
         if (input$topic.selection == 'none') { dims <- append(dims,'topic') }
         if (input$time.selection == 'none') { dims <- append(dims,'time') }
         if (length(dims) > 0) { dc.agg <- remove.dims (dc.agg, dims) }
@@ -163,7 +170,7 @@ function (input, output, session) {
 
         if (dc.dev1$dim.nb > 0) { 
             dims <- c()
-            if (input$user.selection %in% c('all','some','one') && input$user.normalisation) { dims <- append(dims,'user') }
+            if (user.selection() %in% c('all','some','one') && input$user.normalisation) { dims <- append(dims,'user') }
             if (input$topic.selection %in% c('all','some','one') && input$topic.normalisation) { dims <- append(dims,'topic') }
             if (input$time.selection %in% c('all','some','one') && input$time.normalisation) { dims <- append(dims,'time') }
 
@@ -213,7 +220,7 @@ function (input, output, session) {
         }
 
         dims <- c()
-        if (! input$user.selection %in% c('one','none')) { dims <- append (dims, 'user') }
+        if (! user.selection() %in% c('one','none')) { dims <- append (dims, 'user') }
         if (! input$topic.selection %in% c('one','none')) { dims <- append (dims, 'topic') }
         if (! input$time.selection %in% c('one','none')) { dims <- append (dims, 'time') }
 
@@ -223,7 +230,7 @@ function (input, output, session) {
         }
 
         data <- 'obs'
-        if (input$user.selection %in% c('all','some','one') && input$user.normalisation || input$topic.selection %in% c('all','some','one') && input$topic.normalisation || input$time.selection %in% c('all','some','one') && input$time.normalisation) { data <- 'obs/exp' }
+        if (user.selection() %in% c('all','some','one') && input$user.normalisation || input$topic.selection %in% c('all','some','one') && input$topic.normalisation || input$time.selection %in% c('all','some','one') && input$time.normalisation) { data <- 'obs/exp' }
 
         plot <- plot.data (dc.plot, data=data, rank=rank, display='display', sep.dim=sep.dim) +
             theme (text=element_text (size=20))
@@ -362,7 +369,7 @@ function (input, output, session) {
     ## DRAW DATA CUBE
     output$draw.cube <- renderRglwidget ({
         dims <- c()
-        if (input$user.selection %in% c('all','some','one') && input$user.normalisation) { dims <- append(dims,'user') }
+        if (user.selection() %in% c('all','some','one') && input$user.normalisation) { dims <- append(dims,'user') }
         if (input$topic.selection %in% c('all','some','one') && input$topic.normalisation) { dims <- append(dims,'topic') }
         if (input$time.selection %in% c('all','some','one') && input$time.normalisation) { dims <- append(dims,'time') }
 

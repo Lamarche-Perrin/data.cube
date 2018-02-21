@@ -12,5 +12,11 @@ inst/doc
 
 # DATA FILES
 rsconnect
-*.mat
-*.raw.csv
+data
+!data/data.cube.example.R
+!data/guardian.2016.csv
+!data/guardian.small.csv
+!data/opinion.traces.csv
+!data/twitter.eu.csv
+!data/twitter.fr.csv
+
