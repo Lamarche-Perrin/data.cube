@@ -1,0 +1,85 @@
+{
+    "basePath": "/",
+    "host": "127.0.0.1:8000",
+    "info": {
+        "title": "Multidimentional Outlier Explorer",
+        "description": "Explore multidimentional data and identify statistical outliers along multiple dimensions.",
+        "version": "1.0.0"
+    },
+    "paths": {
+        "/format_comments": {
+            "post": {
+				"summary": "Transform a list of comments into a list of observations.",
+                "description": "Transform a list of comments, such as the one returned by /penelope/data/comment_structure, into a tridimensional list of observations (number of comments per user, topic, and time) that can be fed to /outliers.",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "param",
+                        "description": "Parameters for the transformation.",
+                        "required": false,
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "name": "data",
+                        "description": "List of comments.",
+                        "required": false,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of observations."
+                    },
+                    "500": {
+                        "description": "Internal service error occured."
+                    }
+                }
+            }
+        },
+        "/outliers": {
+            "post": {
+				"summary": "Get a list of outliers from a list of observations.",
+                "description": "Get a list of positive outliers from a list of multidimensional observations.",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "select",
+                        "description": "Parameters of the outlier detection algorithm.",
+                        "required": false,
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "name": "dataset",
+                        "description": "Internal dataset to use in place of an input list of observations.",
+                        "required": false,
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "name": "data",
+                        "description": "List of observations.",
+                        "required": false,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of outliers."
+                    },
+                    "500": {
+                        "description": "Internal service error occured."
+                    }
+                }
+            }
+        }
+    },
+    "produces": [
+        "application/json"
+    ],
+    "schemes": [
+        "http"
+    ],
+    "swagger": "2.0"
+}

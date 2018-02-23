@@ -1,0 +1,240 @@
+basePath: /Lamarche-Perrin/outlier-explorer/1.0.0
+host: virtserver.swaggerhub.com
+swagger: '2.0'
+info:
+  title: Multidimentional Outlier Explorer
+  description: Explore multidimentional data and identify statistical outliers along multiple dimensions.
+  
+  
+    This component is part of the Penelope platform developed by the <a href="http://www.complexnetworks.fr/" target="_blank">Complex Networks</a> team at <a href="https://www.lip6.fr/" target="_blank">LIP6</a> (<a href="https://www.sorbonne-universite.fr/" target="_blank">UPMC</a> / <a href="http://www.cnrs.fr/" target="_blank">CNRS</a>) for the <a href="https://www.odycceus.eu/" target="_blank">ODYCCEUS</a> project founded by the <a href="https://ec.europa.eu/research/participants/portal/desktop/en/opportunities/h2020/calls/h2020-fetproact-2016-2017.html" target="_blank">H2020 FETPROACT</a> program of the European Commission. Sources are open and available on <a href="https://github.com/Lamarche-Perrin/data.cube" target="_blank">GitHub</a>. Please contact <a href="mailto:Robin.Lamarche-Perrin@lip6.fr">Robin Lamarche-Perrin</a> for any question related to its use.
+  version: 1.0.0
+schemes:
+- https
+- http
+produces:
+- application/json
+tags:
+- name: public
+  description: Operations available to the general public.
+#- name: developers
+#  description: Operations available to regular developers.
+paths:
+  /format_comments:
+    post:
+      summary: Transform a list of articles and comments into a list of tridimensional observations.
+      description: 'Transform a list of articles and comments, such as the one returned by /penelope/data/comment_structure, into a list of tridimensional observations (number of comments per user, topic, and time) that can be fed to /outliers.'
+      tags:
+      - public
+      consumes:
+        - application/json
+      produces: 
+        - application/json      
+      parameters:
+        - in: body
+          name: data
+          description: List of comments and parameters of the transformation.
+          required: true
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: '#/definitions/CommentList'
+              param:
+                type: object
+                properties:
+                  time:
+                    type: object
+                    properties:
+                      reference:
+                        type: string
+                        enum: ['article', 'comment']
+                        default: 'article'
+                        example: 'comment'
+                        description: The date to be considered for the observations. Either the articles' or the comments' publication date.
+                      resolution:
+                        type: string
+                        enum: ['day', 'week']
+                        example: 'day'
+                        default: 'week'
+                        description: The time level of the observations (day or week).
+      responses:
+        '200':
+          description: List of tridimensional observations.
+          schema:
+            $ref: '#/definitions/ObservationList'
+        '500':
+          description: Internal service error occured.
+  /outliers:
+    post:
+      summary: Get an ordered list of positive outliers from a list of multidimensional observations.
+      description: Get an ordered list of positive outliers from a list of multidimensional observations.
+      tags:
+      - public
+      consumes:
+        - application/json
+      produces: 
+        - application/json      
+      parameters:
+        - in: body
+          name: data
+          description: List of observations and parameters of the outlier detection algorithm.
+          required: true
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: '#/definitions/ObservationList'
+              dataset:
+                type: string
+                description: Internal dataset to use in place of an input list of observations.
+                enum: ['guardian.2016', 'twitter.eu', 'twitter.fr', 'opinion.traces']
+                example:
+              param:
+                type: object
+                properties:
+                  select:
+                    type: array
+                    description: Dimensions to select when performing the outlier detection.
+                    items:
+                      type: object
+                      properties:
+                        dim:
+                          type: string
+                          description: Name of the selected dimension.
+                        select:
+                          type: string
+                          description: Type of selection. All elements or some elements.
+                          enum: ['all', 'some']
+                          default: 'all'
+                        list:
+                          type: array
+                          description: Selected elements. Only when not selecting all elements.
+                          items:
+                            type: string
+                        head:
+                          type: integer
+                          description: Number of elements to select among the most observed elements. Only when not selecting all elements.
+                          example: 5
+                    example:
+                      - dim: 'user'
+                        select: 'some'
+                        list: ['985002']
+                      - dim: 'topic'
+                        select: 'some'
+                        head: 5
+                      - dim: 'time'
+                        select: 'all'
+                  normalise:
+                    type: array
+                    description: Dimensions to use for data normalisation.
+                    items:
+                      type: string
+                    example: ['topic', 'time']
+                  stat.test:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        description: Type of statistical test to perform in order to measure the deviation between the observed value and the expected value. Either a Poisson test or a test based on the Kullback-Leibler divergence.
+                        enum: ['poisson', 'KLdiv']
+                        default: 'poisson'
+                      threshold:
+                        type: number
+                        description: Number of standard devitations above which the result of the statistical test is considered as a positive outlier.
+                        default: 3
+                        example: 3
+      responses:
+        '200':
+          description: Ordered list of positive outliers.
+          schema:
+            $ref: '#/definitions/OutlierList'
+        '500':
+          description: Internal service error occured.
+definitions:
+  CommentList:
+    type: array
+    items:
+      type: object
+      properties:
+        article_tags:
+          type: array
+          items:
+            type: string
+          example: ['keyword1', 'keyword2']
+        data_published:
+          type: string
+          example: '2018-02-22 16:48:23'
+        comments:
+          type: array
+          items:
+            type: object
+            properties:
+              author_id:
+                type: string
+              time_stamp:
+                type: string
+          example:
+            - author_id: '168820'
+              time_stamp: '2018-02-23 10:45:01'
+            - author_id: '985002'
+              time_stamp: '2018-02-22 22:25:58'
+  ObservationList:
+    type: array
+    items:
+      type: object
+      properties:
+        user:
+          type: string
+        topic:
+          type: string
+        time:
+          type: string
+        obs:
+          type: number
+    example:
+      - user: '168820'
+        topic: 'keyword1'
+        time: '2018-02-23'
+        obs: 0.5
+      - user: '168820'
+        topic: 'keyword2'
+        time: '2018-02-23'
+        obs: 0.5
+      - user: '985002'
+        topic: 'keyword1'
+        time: '2018-02-22'
+        obs: 0.5
+      - user: '985002'
+        topic: 'keyword2'
+        time: '2018-02-22'
+        obs: 0.5
+  OutlierList:
+    type: array
+    items:
+      type: object
+      properties:
+        user:
+          type: string
+        topic:
+          type: string
+        time:
+          type: string
+        obs:
+          type: number
+        exp:
+          type: number
+        dev:
+          type: number
+    example:
+      - user: '985002'
+        topic: 'keyword2'
+        time: '2018-02-22'
+        obs: 0.5
+        exp: 3.2
+        dev: 6.4
+      - user: '168820'
+        topic: 'keyword1'
+        time: '2018-02-23'
+        obs: 0.5
+        exp: 2.5
+        dev: 5

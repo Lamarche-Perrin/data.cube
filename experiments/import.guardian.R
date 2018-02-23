@@ -10,8 +10,8 @@ url <- 'https://www.fcg-net.org/penelope/data/comment_structure'
 
 fields <- list (
     collection = 'GuardianArticles',
-    start_date = '2016-01-04',
-    end_date = '2017-01-01',
+    start_date = '2017-01-02', #'2016-01-04',
+    end_date = '2017-01-29', #'2017-01-01',
     limit = 0
 )
 
