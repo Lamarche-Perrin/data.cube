@@ -22,7 +22,6 @@
 ## with this program. If not, see <http://www.gnu.org/licenses/>.
 
 library ('shiny')
-#library ('shinyRGL')
 library ('rjson')
 
 source ('../data.cube.R')
@@ -54,7 +53,7 @@ function (input, output, session) {
         ## Dimension selection
         dim.buttons <- function (dim, label=dim) {
             choices <- c('all', 'some', 'one', 'none')
-            names(choices) <- c(paste('All (', dc$elem.nb[[dim]], ')', sep=''), 'Some', 'One', 'None')
+            names(choices) <- c(paste('All (', dc$elem.nb[[dim]], ')', sep=''), 'Some', 'One', 'Aggregate')
             return (renderUI ({ radioButtons (paste(dim, '.selection', sep=''), label=h4(label), inline=TRUE,
                                               choices=choices, selected='none')
             }))
@@ -114,9 +113,12 @@ function (input, output, session) {
 
         output$input.panel.3 <- renderUI ({
             wellPanel (
-                numericInput ("min.obs", label=h4("Filter data (min value)"), 1, min=0, step=1),
-                rglwidgetOutput ("draw.cube", width="100%", height="150px")
+                numericInput ("min.obs", label=h4("Filter data (min value)"), 1, min=0, step=1)
             )
+        })
+        
+        output$input.panel.4 <- renderUI ({
+            rglwidgetOutput ("draw.cube", width="100%", height="150px")
         })
         
         return (dc)

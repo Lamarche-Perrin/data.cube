@@ -35,8 +35,8 @@ fluidPage (
                                                   "Guardian Comments (2016)"="guardian.2016",
                                                   "Twitter Politics (EU)"="twitter.eu",
                                                   "Twitter Politics (FR)"="twitter.fr",
-                                                  "Opinion Model"="opinion.traces",
-                                                  "IP Traffic MAWI"="mawi.sec"
+                                                  "Opinion Model"="opinion.traces"#,
+                                                  #"IP Traffic MAWI"="mawi.sec"
                                               ), selected=character(0))
                             ),
                             conditionalPanel (condition="$('html').hasClass('shiny-busy')", div (img (src="images/busy2.gif", height=90), style="text-align: center;"))
@@ -58,7 +58,7 @@ fluidPage (
                             )
                             ),
                     column (3, uiOutput ("input.panel.2")),
-                    column (2, uiOutput ("input.panel.3"))
+                    column (2, uiOutput ("input.panel.3"), uiOutput ("input.panel.4"))
                 ),
                 hr ()
                 ),
