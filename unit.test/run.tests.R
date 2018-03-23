@@ -1,7 +1,7 @@
 rm(list=ls())
 
 library ('testthat')
-source ('../data.cube.R')
+source ('../data.cube.1.1.R')
 
 test.data.cube <- function (dc, file) {
     dim.names <- dc$dim.names

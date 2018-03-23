@@ -19,4 +19,5 @@ data
 !data/opinion.traces.csv
 !data/twitter.eu.csv
 !data/twitter.fr.csv
+!data/geomedia.csv
 

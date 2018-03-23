@@ -21,433 +21,924 @@
 ## You should have received a copy of the GNU General Public License along
 ## with this program. If not, see <http://www.gnu.org/licenses/>.
 
-library ('ggplot2')
-library ('scales')
-library ('ggrepel')
-library ('reshape2')
-library ('cowplot')
-library ('rgl')
 
-## Build data.cube from data.frame
-as.data.cube <- function (obj, ...) { UseMethod ('as.data.cube') }
-as.data.cube.data.frame <- function (df, data.cols=c('obs')) {
+#' @title Easy Processing of Multidimensional Data.
+#'
+#' @description
+#' \code{data.cube} is an R package for the exploration of multidimensional
+#' datasets and for the detection of statistical outliers within. It is
+#' mainly a tool for data exploration, allowing to have a first glance at
+#' it and to formulate research hypotheses to be later tested.
+#'
+#' The package defines a new data structure called data.cube that can be
+#' fed with a classical \code{data.frame} encoding a list of numeric
+#' observations described according to several categorical dimensions. For
+#' example, in the case of Twitter data, it can be the number of tweets
+#' (numeric observation) that have been published by a given user (first
+#' dimension) about a given topic (second dimension) at a given date (third
+#' dimension). The input data.frame hence takes the form of a list of
+#' quadruplets (user, topic, date, number of tweets).
+#'
+#' Statistical outliers can then be identified among the observations by
+#' first selecting some dimensions of interest, that is by subsetting or
+#' by aggregating the input dimensions. If needed, observations can also be
+#' normalised according to the marginal values along the selected
+#' dimensions, thus comparing the observed value to an expected value
+#' obtained by the uniform redistribution of the selected marginal values.
+#' Different statistical tests can then be chosen to measure the deviation
+#' between the observed and the expected values. The package finally allows
+#' to retrieve a list of positive outliers, that is observations that are
+#' significantly higher than expected.
+#'
+#' Note that the current implementation is optimised for sparse data. 
+#'
+#' This package has been developed by researchers of the Complex Networks
+#' team, within the Computer Science Laboratory of Paris 6 (LIP6), for the
+#' ODYCCEUS project, founded by the European Commission FETPROACT 2016-2017
+#' program under grant 732942.
+#'
+#' Links:
+#' \itemize{
+#' \item Complex Networks team: \url{http://www.complexnetworks.fr/}
+#' \item LIP6: \url{https://www.lip6.fr/}
+#' \item ODYCCEUS project: \url{https://www.odycceus.eu/}
+#' }
+#' 
+#' Contact:
+#' \itemize{
+#' \item Robin Lamarche-Perrin: \email{Robin.Lamarche-Perrin@@lip6.fr}
+#' 
+#' See also my webpage:
+#' \url{https://www-complexnetworks.lip6.fr/~lamarche/}
+#' }
+#' 
+#' List of main collaborators:
+#' \itemize{
+#' \item Robin Lamarche-Perrin (CNRS, ISC-PIF, LIP6)
+#' \item Audrey Wilmet (UPMC, LIP6)
+#' \item Léonard Panichi (UPMC, LIP6)
+#' }
+#' 
+#' Copyright 2018 © Robin Lamarche-Perrin
+#' 
+#' \code{data.cube} is free software: you can redistribute it and/or modify
+#' it under the terms of the GNU General Public License as published by the
+#' Free Software Foundation, either version 3 of the License, or (at your
+#' option) any later version. It is distributed in the hope that it will be
+#' useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+#' MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+#' Public License for more details. You should have received a copy of the
+#' GNU General Public License along with this program. If not, see
+#' \url{http://www.gnu.org/licenses/}.
+#' 
+#' @docType package
+#' 
+#' @name data.cube
+#' 
+#' @import tidyverse reshape2 ggrepel cowplot data.table scales cowplot
+NULL
+
+
+library ("tidyverse")
+library ("scales")
+library ("ggrepel")
+library ("reshape2")
+library ("cowplot")
+library ("rgl")
+library ("data.table")
+
+
+as.data.cube_<- function (obj, ...) { UseMethod ("as.data.cube_") }
+as.data.cube_.data.frame<- function (df, dim = names(df) [! names(df) %in% var], var) {
+    if (is.null (names (dim))) names (dim) <- dim
+    else names (dim) <- ifelse (names (dim) == "", unlist (dim), names (dim))
+    dim <- unlist (dim)
+
+    if (is.null (names (var))) names (var) <- var
+    else names (var) <- ifelse (names (var) == "", unlist (var), names (var))
+    var <- unlist (var)
+
+    ## Build data.cuve
     dc <- list()
-    class (dc) <- 'data.cube'
+    class (dc) <- "data.cube"
 
-    dim.names <- names(df)[! names(df) %in% data.cols]
-    dc$dim.nb <- length(dim.names)
-    dc$dim.names <- dim.names
+    dc$dim.nb <- length (dim)
+    dc$dim.names <- names (dim)
 
-    elem.names <- lapply (df[,dim.names], function (dim) { return (unique(dim)) })
-    dc$elem.nb <- lapply (elem.names, function (dim) { return (length(dim)) })
-    dc$elem.names <- elem.names
+    elm.names <- lapply (df[, dim], function (d) unique (d))
+    dc$elm.nb <- lapply (elm.names, function (d) length (d))
+    dc$elm.names <- elm.names
+    
+    dc$var.nb <- length (var)
+    dc$var.names <- names (var)
 
-    dc$cells <- lapply (dim.names, function (dim) { return (match (df[,dim], dc$elem.names[[dim]])) })
-    names(dc$cells) <- dim.names
+    ## Fill observations
+    dc$obs <- list()
+    dc.name <- paste (dc$dim.names, collapse=".")
 
-    dc$data <- as.list (df[,data.cols,drop=FALSE])
+    dc$obs[[dc.name]] <- list()
+    dc$obs[[dc.name]]$elms <- lapply (dim, function (d) { return (match (df[, d], dc$elm.names[[d]])) })
 
-    dc$margins <- list()
-    dc <- compute.margins (dc)
+    dc$obs[[dc.name]]$vars <- as.list (df[, var, drop=FALSE])
 
+    names (dc$elm.nb) <- dc$dim.names
+    names (dc$elm.names) <- dc$dim.names
+    names (dc$obs[[dc.name]]$elms) <- dc$dim.names
+    names (dc$obs[[dc.name]]$vars) <- dc$var.names
+
+    ## Compute margins
+    dc <- compute.margin_(dc)
+    for (d in dc$dim.names) dc <- compute.margin_(dc, d)
+    
     return (dc)
 }
+
+as.data.cube <- function (obj, ...) { UseMethod ("as.data.cube") }
+
+#' @title Transform a \code{data.frame} into a \code{data.cube}.
+#' 
+#' @description
+#' \code{as.data.cube} transforms a \code{data.frame} into a
+#' \code{data.cube} by interpreting its rows as observations and its
+#' columns either as categorical parts of the observations (elements within
+#' dimensions) or as numerical pars ot the observations (values taken by
+#' the variables).
+#'
+#' @param df A \code{data.frame} to be transformed into a \code{data.cube}.
+#'
+#' @param dim A list giving the columns of \code{df} to be used as
+#' dimensions for the \code{data.cube}. If names are provided, they are
+#' interpreted as names for the corresponding dimensions.
+#'
+#' @param var A list giving the columns of \code{df} to be used as
+#' variables for the \code{data.cube}. If names are provided, they are
+#' interpreted as names for the corresponding variables.
+#' 
+#' @return A \code{data.cube}.
+#'
+#' @export
+as.data.cube.data.frame <- function (df, dim, var) {
+    dim <- lapply (substitute (dim), deparse)
+    dim <- unlist (dim) [2: length (dim)] ## TODO: if only one dim
+
+    var <- lapply (substitute (var), deparse)
+    var <- unlist (var) [2: length (var)] ## TODO: if only one var
+
+    as.data.cube_(df, dim, var)
+}
+
 
 is.data.cube <- function (obj) { inherits (obj, "data.cube") }
 
-as.data.frame.data.cube <- function (dc, display=NULL, rank=NULL) {
-    df <- as.data.frame (cbind (as.data.frame (dc$cells), as.data.frame (dc$data)))
+as.data.frame_<- function (obj, ...) { UseMethod ("as.data.frame_") }
+as.data.frame_.data.cube <- function (dc, dim = dc$dim.names, var = dc$var.names, complete=FALSE) {
+    dim <- unlist (dim)
+    var <- unlist (var)
 
-    if (! is.null (display))
-    {
-        df <- df[df[[display]],]
-        df[[display]] <- NULL
+    dc.name <- paste (dc$dim.names, collapse=".")
+
+    df <- as.data.frame (cbind (as.data.frame (dc$obs[[dc.name]]$elms), as.data.frame (dc$obs[[dc.name]]$vars)))
+
+    if (complete) { # TODO: complete wrt dc$elm.names
+        df$row <- 1:nrow(df)
+        fill <- as.list (sapply (dc$var.names, function (v) 0))
+        fill$row <- nrow(df)+1
+        df <- as.data.frame (complete_(df, cols=dc$dim.names, fill=fill))
+        df <- df [order (df$row), ]
+        df$row <- NULL
     }
-    
-    if (! is.null (rank))
-    {
-        df <- df[order(df[[rank]]),]
-        df[[rank]] <- NULL
-    }
 
-    dummy <- lapply (dc$dim.names, function (dim) { return (df[[dim]] <<- dc$elem.names[[dim]][df[[dim]]]) })
+    df [, append (dim, var)]
+    if (length (dim) > 0) dummy <- lapply (dim, function (d) { return (df[[d]] <<- dc$elm.names[[d]][df[[d]]]) })
 
-    return (df)
+    if (length (df) == 1) return (df[, 1])
+    else return (df)
 }
 
-## Compute margins
-compute.margins <- function (obj, ...) { UseMethod ('compute.margins') }
-compute.margins.data.cube <- function (dc, dims=dc$dim.names) {
-    dc$data.sum <- lapply (dc$data, function (dat) { return (sum(dat)) })
-    
-    for (dim in dims) {
-        agg <- aggregate (dc$data, by=dc$cells[dim], FUN=sum)
-        dc$margins[[dim]]$cells[[dim]] <- agg[[dim]]
-        dc$margins[[dim]]$data <- as.list (agg[,names(agg) != dim, drop=FALSE])
-        dc$elem.nb[[dim]] <- length (dc$elem.names[[dim]])
+
+
+#' @title Transform a \code{data.cube} into a \code{data.frame}.
+#' 
+#' @description
+#' \code{as.data.frame} transforms a \code{data.cube} into a
+#' \code{data.frame} by presenting observation in rows, and dimensions and
+#' variables in columns.
+#'
+#' @param dc A \code{data.cube} to be transformed into a \code{data.frame}.
+#'
+#' @param complete A logical value indicating if observations for which
+#' variables are all equal zero should be registered in the returned
+#' \code{data.frame}. If not, the returned \code{data.frame} hence provides
+#' a sparse representation of the data.
+#'
+#' @return A \code{data.frame}.
+#'
+#' @export
+as.data.frame.data.cube <- function (dc, complete=FALSE) dc %>% as.data.frame_(complete=complete)
+
+as.data.frame.dim <- function (obj, ...) { UseMethod ("as.data.frame.dim") }
+as.data.frame.dim.data.cube <- function (dc, complete=FALSE) dc %>% as.data.frame_(var = list(), complete=complete)
+
+as.data.frame.var <- function (obj, ...) { UseMethod ("as.data.frame.var") }
+as.data.frame.var.data.cube <- function (dc, complete=FALSE) dc %>% as.data.frame_(dim = list(), complete=complete)
+
+
+dim.names <- function (obj, ...) { UseMethod ("dim.names") }
+
+#' @title Get names of the dimensions of a \code{data.cube}.
+#' 
+#' @param dc A \code{data.cube}.
+#'
+#' @return A character vector giving the names of the dimensions of
+#' \code{dc}.
+#'
+#' @export
+dim.names.data.cube <- function (dc) dc$dim.names
+
+elm.names_<- function (obj, ...) { UseMethod ("elm.names_") }
+elm.names_.data.cube <- function (dc, dim=dc$dim.names) {
+    if (length (dim) == 1) return (dc$elm.names[[unlist(dim)]])
+    dc$elm.names[dim]
+}
+
+elm.names <- function (obj, ...) { UseMethod ("elm.names") }
+
+#' @title Get names of the elements in the dimensions of a
+#' \code{data.cube}.
+#' 
+#' @param dc A \code{data.cube}.
+#'
+#' @param ... Optional. Names of the dimensions of interest.
+#' 
+#' @return A named list of character vectors giving the names of the
+#' elements in the dimensions of \code{dc}.
+#'
+#' @export
+elm.names.data.cube <- function (dc, ...) {
+    dim <- sapply (eval (substitute (alist (...))), deparse)
+    if (length (dim) == 0) dim <- dc$dim.names
+    elm.names_(dc, dim)
+}
+
+var.names <- function (obj, ...) { UseMethod ("var.names") }
+
+#' @title Get names of the variables of a \code{data.cube}.
+#' 
+#' @param dc A \code{data.cube}.
+#'
+#' @return A character vector giving the names of the variables of
+#' \code{dc}.
+#'
+#' @export
+var.names.data.cube <- function (dc) dc$var.names
+
+dim.nb <- function (obj, ...) { UseMethod ("dim.nb") }
+
+#' @title Get the number of dimensions of a \code{data.cube}.
+#' 
+#' @param dc A \code{data.cube}.
+#'
+#' @return An integer giving the number of dimensions of \code{dc}.
+#'
+#' @export
+dim.nb.data.cube <- function (dc) dc$dim.nb
+
+elm.nb_<- function (obj, ...) { UseMethod ("elm.nb_") }
+elm.nb_.data.cube <- function (dc, dim=dc$dim.names) {
+    if (length (dim) == 1) return (dc$elm.nb[[unlist(dim)]])
+    dc$elm.nb[dim]
+}
+
+elm.nb <- function (obj, ...) { UseMethod ("elm.nb") }
+
+#' @title Get the number of elements in the dimensions of a
+#' \code{data.cube}.
+#' 
+#' @param dc A \code{data.cube}.
+#'
+#' @param ... Optional. Names of the dimensions of interest.
+#' 
+#' @return A named list of integers giving the number of elements in the
+#' dimensions of \code{dc}.
+#'
+#' @export
+elm.nb.data.cube <- function (dc, ...) {
+    dim <- sapply (eval (substitute (alist (...))), deparse)
+    if (length (dim) == 0) dim <- dc$dim.names
+    elm.nb_(dc, dim)
+}
+
+var.nb <- function (obj, ...) { UseMethod ("var.nb") }
+
+#' @title Get the number of variables of a \code{data.cube}.
+#' 
+#' @param dc A \code{data.cube}.
+#'
+#' @return An integer giving the number of variables of \code{dc}.
+#'
+#' @export
+var.nb.data.cube <- function (dc) dc$var.nb
+
+
+
+compute.margin_<- function (obj, ...) { UseMethod ("compute.margin_") }
+compute.margin_.data.cube <- function (dc, dim=list(), recursive=FALSE) {
+    dc.name <- paste (dc$dim.names, collapse=".")
+
+    ## Compute global margin if necessary
+    if (length (dim) == 0 || recursive) {
+        dc$obs[["."]] <- list()
+        dc$obs[["."]]$elms <- list()
+        dc$obs[["."]]$vars <- lapply (dc$obs[[dc.name]]$vars, function (var) sum (var))
+        if (length (dim) == 0) return (dc)
+    }
+
+    ## List recursive margins if necessary
+    if (recursive) {
+        dim <- unlist (sapply (1:length (dim), function (n) combn (dim, n, simplify=FALSE)), recursive=FALSE)
+    } else { dim <- list (dim) }
+
+    ## Compute all requested margins (except global)
+    for (d in dim) {
+        if (length (d) == dc$dim.nb) next
+        
+        d <- dc$dim.names [dc$dim.names %in% d]
+        dp.name <- paste (d, collapse=".")
+        agg <- aggregate (dc$obs[[dc.name]]$vars, by=dc$obs[[dc.name]]$elms[d], FUN=sum)
+        rank <- aggregate (x=seq_along(dc$obs[[dc.name]]$elms[d][[1]]), by=dc$obs[[dc.name]]$elms[d], FUN=min)[,"x"]
+
+        dc$obs[[dp.name]] <- list ()
+        dc$obs[[dp.name]]$elms <- as.list (agg[order(rank), d, drop=FALSE])
+        dc$obs[[dp.name]]$vars <- as.list (agg[order(rank), ! names(agg) %in% d, drop=FALSE])
     }
 
     return (dc)
 }
 
+compute.margin <- function (obj, ...) { UseMethod ("compute.margin") }
+compute.margin.data.cube <- function (dc, ..., recursive=FALSE) {
+    dim <- sapply (eval (substitute (alist (...))), deparse)
+    compute.margin_(dc, dim, recursive)
+}
 
-## Remove elems
-remove.elems <- function (obj, ...) { UseMethod ('remove.elems') }
-remove.elems.data.cube <- function (dc, elems) {
-    for (d in seq_along (elems)) {
-        rem.elems <- elems[[d]]
-        dim <- names(elems)[[d]]
-        
-        new.elems <- c()
-        new.indices <- c()
-        
-        current.index <- 1
-        for (index in seq_along (dc$elem.names[[dim]])) {
-            if (dc$elem.names[[dim]][index] %in% rem.elems) { new.indices[index] <- NA }
-            else {
-                new.elems[current.index] <- dc$elem.names[[dim]][index]
-                new.indices[index] <- current.index
-                current.index <- current.index + 1
-            }
+
+
+update.margin <- function (obj, ...) { UseMethod ("update.margin") }
+update.margin.data.cube <- function (dc) {
+    dc$elm.nb <- lapply (dc$elm.names, function (d) length (d))
+
+    dc.name <- paste (dc$dim.names, collapse=".")
+    for (dp.name in names (dc$obs)) {
+        if (dp.name == dc.name) next
+        if (dp.name == ".") dc <- compute.margin_(dc)
+        else {
+            d <- strsplit (dp.name, ".", fixed=TRUE)[[1]]
+            dc <- compute.margin_(dc, d)
         }
-
-        dc$elem.names[[dim]] <- new.elems
-        dc$cells[[dim]] <- new.indices[dc$cells[[dim]]]
-
-        dc$margins[[dim]]$cells[[dim]] <- new.indices[dc$margins[[dim]]$cells[[dim]]]
-        dc$margins[[dim]]$data <- lapply (dc$margins[[dim]]$data, function (data) { return (data [! is.na (dc$margins[[dim]]$cells[[dim]])]) })
-        dc$margins[[dim]]$cells[[dim]] <- dc$margins[[dim]]$cells[[dim]] [! is.na (dc$margins[[dim]]$cells[[dim]])]
     }
-
-    ## TODO: successive remove in the loop? (as function below)
-    kept.cells <- !apply (as.data.frame (lapply (dc$cells, function (dim) { return (is.na(dim)) } )), 1, FUN=any)
-
-    dc$cells <- lapply (dc$cells, function (dim) {return (as.integer (dim[kept.cells])) })
-    dc$data <- lapply (dc$data, function (data) {return (data[kept.cells]) })
-    ##dc$elem.nb <- lapply (dc$elem.names, function (dim) { return (length(dim)) })
-    
     return (dc)
 }
 
 
-## Select elems
-select.elems <- function (obj, ...) { UseMethod ('select.elems') }
-select.elems.data.cube <- function (dc, elems) {
-    ## TODO: improve
-    remove <- list()
-    for (d in seq_along (elems)) {
-        dim <- names(elems)[[d]]
-        remove[[dim]] <- dc$elem.names[[dim]][! dc$elem.names[[dim]] %in% elems[[d]]]
-    }
-    return (remove.elems (dc, remove))
-}
 
+select.dim_<- function (obj, ...) { UseMethod ("select.dim_") }
+select.dim_.data.cube <- function (dc, dim) {
+    ## Compute corresponding data plane
+    old.dim <- dc$dim.names [dc$dim.names %in% dim]
+    old.dp.name <- paste (old.dim, collapse=".")
+    if (is.null (dc$obs[[old.dp.name]])) dc <- dc %>% compute.margin_(dim)
 
-## Aggregate elems
-aggregate.elems <- function (obj, ...) { UseMethod ('aggregate.elems') }
-aggregate.elems.data.cube <- function (dc, elems) {
-    for (d in seq_along (elems)) {
-        agg.elems <- elems[[d]]
-        dim <- names(elems)[[d]]
+    ## Adjust other data cube attributes
+    dc$dim.nb <- length (dim)
+    dc$dim.names <- dim
+    dc$elm.nb <- dc$elm.nb[dim]
+    dc$elm.names <- dc$elm.names[dim]
 
-        new.elems <- names (agg.elems)
-        old.indices <- lapply (agg.elems, function (a) match (a, dc$elem.names[[dim]]))
-        agg.indices <- unname (unlist (lapply (old.indices, function (indices) min (indices))))
-
-        new.indices <- seq_along (dc$elem.names[[dim]])
-
-        for (a in seq_along (agg.elems)) {
-            new.indices[old.indices[[a]]] <- agg.indices[a]
-            dc$elem.names[[dim]][old.indices[[a]]] <- NA
-            dc$elem.names[[dim]][agg.indices[a]] <- new.elems[a]
+    ## Adjust all data planes
+    for (dp.name in names (dc$obs)) {
+        if (dp.name == ".") next
+        d <- strsplit (dp.name, ".", fixed=TRUE)[[1]]
+        if (! all (d %in% dim)) dc$obs[[dp.name]] <- NULL
+        else {
+            ## Adjust elements
+            new.dim <- dc$dim.names[dc$dim.names %in% d]
+            new.dp.name <- paste (new.dim, collapse=".")
+            names (dc$obs) [names (dc$obs) == dp.name] <- new.dp.name
+            dc$obs[[new.dp.name]]$elms <- dc$obs[[new.dp.name]]$elms[new.dim]
         }
-
-        unique_old.indices <- unique (new.indices)
-        unique_old.indices <- unique_old.indices[order(unique_old.indices)]
-        new.indices <- match (new.indices, unique_old.indices)
-        
-        dc$elem.names[[dim]] <- dc$elem.names[[dim]][! is.na (dc$elem.names[[dim]])]
-        dc$cells[[dim]] <- new.indices[dc$cells[[dim]]]
-
-        dc$margins[[dim]]$cells[[dim]] <- new.indices[dc$margins[[dim]]$cells[[dim]]]
-        dc$margins[[dim]]$data <- as.list (aggregate (dc$margins[[dim]]$data, by=dc$margins[[dim]]$cells, FUN=sum))
     }
 
-    agg <- aggregate (dc$data, by=dc$cells, FUN=sum)
-    dc$cells <- agg [dc$dim.names]
-    dc$data <- agg [names (dc$data)]
-    dc$elem.nb <- lapply (dc$elem.names, function (dim) { return (length(dim)) })
+    return (dc)
+}
+
+select.dim <- function (obj, ...) { UseMethod ("select.dim") }
+select.dim.data.cube <- function (dc, ...) {
+    dim <- sapply (eval (substitute (alist (...))), deparse)
+    select.dim_(dc, dim)
+}
+
+
+
+select.elm.indices_<- function (obj, ...) { UseMethod ("select.elm.indices_") }
+select.elm.indices_.data.cube <- function (dc, dim, elm.indices, suppress) {
+    new.indices <- rep (NA, length (dc$elm.names[[dim]]))
+    new.indices [elm.indices] <- seq_along (elm.indices)
+
+    dc$elm.names[[dim]] <- dc$elm.names[[dim]] [elm.indices]
+
+    for (dp.name in names (dc$obs)) {
+        if (dp.name == ".") next
+        d <- strsplit (dp.name, ".", fixed=TRUE)[[1]]
+        if (dim %in% d) {
+            keep <- dc$obs[[dp.name]]$elms[[dim]] %in% elm.indices
+
+            dc$obs[[dp.name]]$elms <- lapply (dc$obs[[dp.name]]$elms, function (d) d [keep])
+            dc$obs[[dp.name]]$vars <- lapply (dc$obs[[dp.name]]$vars, function (d) d [keep])
+            dc$obs[[dp.name]]$elms[[dim]] <- new.indices [dc$obs[[dp.name]]$elms[[dim]]]
+        }
+    }
+
+    if (suppress) dc <- update.margin (dc)
+    return (dc)
+}
+
+
+select.elm_<- function (obj, ...) { UseMethod ("select.elm_") }
+select.elm_.data.cube <- function (dc, dim, elm, suppress) {
+    elm.indices <- seq (length (dc$elm.names[[dim]])) [dc$elm.names[[dim]] %in% elm]
+    dc %>% select.elm.indices_(dim, elm.indices, suppress)
+}
+
+select.elm <- function (obj, ...) { UseMethod ("select.elm") }
+select.elm.data.cube <- function (dc, dim, elm, suppress=FALSE) {
+    dim <- deparse (substitute (dim))
+    dc %>% select.elm_(dim, elm, suppress)
+}
+
+
+remove.elm_<- function (obj, ...) { UseMethod ("remove.elm_") }
+remove.elm_.data.cube <- function (dc, dim, elm, suppress=FALSE) {
+    elm.indices <- seq (length (dc$elm.names[[dim]])) [! dc$elm.names[[dim]] %in% elm]
+    dc %>% select.elm.indices_(dim, elm.indices, suppress)
+}
+
+remove.elm <- function (obj, ...) { UseMethod ("remove.elm") }
+remove.elm.data.cube <- function (dc, dim, elm, suppress=FALSE) {
+    dim <- deparse (substitute (dim))
+    dc %>% remove.elm_(dim, elm, suppress)
+}
+
+
+
+head_<- function (obj, ...) { UseMethod ("head_") }
+head_.data.cube <- function (dc, dim, n=6L, suppress) {
+    if (is.null (dc$obs[[dim]])) dc <- compute.margin_(dc, dim)
+    elm.indices <- head (dc$obs[[dim]]$elms[[dim]] [order (dc$obs[[dim]]$vars[[dc$var.names[1]]], decreasing=TRUE)], n)
+    elm.indices <- elm.indices [order (elm.indices)]
+    dc %>% select.elm.indices_(dim, elm.indices, suppress)
+}
+
+head.data.cube <- function (dc, dim, n=6L, suppress=FALSE) {
+    dim <- deparse (substitute (dim))
+    head_(dc, dim, n, suppress)
+}
+
+
+
+tail_<- function (obj, ...) { UseMethod ("tail_") }
+tail_.data.cube <- function (dc, dim, n=6L, suppress) {
+    if (is.null (dc$obs[[dim]])) dc <- compute.margin_(dc, dim)
+    elm.indices <- tail (dc$obs[[dim]]$elms[[dim]] [order (dc$obs[[dim]]$vars[[dc$var.names[1]]], decreasing=TRUE)], n)
+    elm.indices <- elm.indices [order (elm.indices)]
+    dc %>% select.elm.indices_(dim, elm.indices, suppress)
+}
+
+tail.data.cube <- function (dc, dim, n=6L, suppress=FALSE) {
+    dim <- deparse (substitute (dim))
+    tail_(dc, dim, n, suppress)
+}
+
+
+
+filter.elm <- function (obj, ...) { UseMethod ("filter.elm") }
+filter.elm.data.cube <- function (dc, dim, filter, suppress=FALSE) {
+    dim <- deparse (substitute (dim))
+    filter <- substitute (filter)
+
+    dp.name <- paste (dim, collapse=".")
+    if (is.null (dc$obs[[dp.name]])) dc <- compute.margin_(dc, dim)
+
+    keep <- eval (filter, dc$obs[[dp.name]]$vars)
+    elm.indices <- dc$obs[[dp.name]]$elms[[dim]] [keep]
+    select.elm.indices_(dc, dim, elm.indices=elm.indices, suppress=suppress)
+}
+
+
+filter.var <- function (obj, ...) { UseMethod ("filter.var") }
+filter.var.data.cube <- function (dc, filter) {
+    filter <- substitute (filter)
+    dc.name <- paste (dc$dim.names, collapse=".")
+
+    keep <- eval (filter, dc$obs[[dc.name]]$vars)
+    dc$obs[[dc.name]]$elms <- lapply (dc$obs[[dc.name]]$elms, function (dim) dim [keep])
+    dc$obs[[dc.name]]$vars <- lapply (dc$obs[[dc.name]]$vars, function (dim) dim [keep])
 
     return (dc)
 }
 
 
-## Remove dims
-remove.dims <- function (obj, ...) { UseMethod ('remove.dims') }
-remove.dims.data.cube <- function (dc, dims) {
-    for (d in seq_along (dims)) {
-        dim <- dims[[d]]
-
-        dc$elem.nb[[dim]] <- NULL
-        dc$elem.names[[dim]] <- NULL
-        dc$cells[[dim]] <- NULL
-        dc$margins[[dim]] <- NULL
+arrange.dim_<- function (obj, ...) { UseMethod ("arrange.dim_") }
+arrange.dim_.data.cube <- function (dc, dim, decreasing) {
+    for (dp.name in names (dc$obs)) {
+        if (dp.name == ".") next
+        dim2 <- strsplit (dp.name, ".", fixed=TRUE)[[1]]
+        for (d in rev (dim)) {
+            if (! d %in% dim2) next
+            rank <- rank (dc$elm.names[[d]])
+            order <- order (rank [dc$obs[[dp.name]]$elms[[d]]], decreasing=decreasing)
+            dc$obs[[dp.name]]$elms <- lapply (dc$obs[[dp.name]]$elms, function (dim) dim [order])
+            dc$obs[[dp.name]]$vars <- lapply (dc$obs[[dp.name]]$vars, function (dim) dim [order])
+        }
     }
 
-    dc$dim.names <- dc$dim.names [! dc$dim.names %in% dims]
-    dc$dim.nb <- length (dc$dim.names)
+    return (dc)
+}
 
-    if (dc$dim.nb > 0 && length (dc$cells[[1]]) > 0) {
-        agg <- aggregate (dc$data, by=dc$cells, FUN=sum)
-        dc$cells <- as.list (agg [dc$dim.names])
-        dc$data <- as.list (agg [names (dc$data)])
-    } else { for (dat in names (dc$data)) { dc$data[[dat]] <- NULL } }
+arrange.dim <- function (obj, ...) { UseMethod ("arrange.dim") }
+arrange.dim.data.cube <- function (dc, ..., decreasing=FALSE) {
+    dim <- sapply (eval (substitute (alist (...))), deparse)
+    arrange.dim_(dc, dim, decreasing)
+}
+
+
+arrange.var_<- function (obj, ...) { UseMethod ("arrange.var_") }
+arrange.var_.data.cube <- function (dc, var=dc$var.names[1], decreasing=TRUE) {
+    dc.name <- paste (dc$dim.names, collapse=".")
+    order <- order (dc$obs[[dc.name]]$vars[[var]], decreasing=decreasing)
+    dc$obs[[dc.name]]$elms <- lapply (dc$obs[[dc.name]]$elms, function (dim) dim [order])
+    dc$obs[[dc.name]]$vars <- lapply (dc$obs[[dc.name]]$vars, function (dim) dim [order])
+
+    return (dc)
+}
+
+arrange.var <- function (obj, ...) { UseMethod ("arrange.var") }
+arrange.var.data.cube <- function (dc, var=NULL, decreasing=TRUE) {
+    var <- deparse (substitute (var))
+    if (var == "NULL") var <- dc$var.names[1]
+    arrange.var_(dc, var=var, decreasing=decreasing)
+}
+
+
+
+plot.var_<- function (obj, ...) { UseMethod ("plot.var_") }
+plot.var_.data.cube <- function (dc, var, type="col", sep.dim=NULL) {
+    df <- as.data.frame (dc, complete=TRUE)
+    if (nrow (df) == 0) return (NULL);
+
+    unsep.dim <- dc$dim.names
+    if (! is.null (sep.dim)) unsep.dim <- dc$dim.names [dc$dim.names != sep.dim]
+
+    uniq.dim <- c()
+    for (d in unsep.dim) if (length (unique (df[, d])) == 1) uniq.dim <- append (uniq.dim, d)
+    ununiq.dim <- unsep.dim [! unsep.dim %in% uniq.dim]
+    
+    df$label <- apply (df, 1, function (row) paste (row[ununiq.dim], collapse=" / "))
+    df$label <- factor (df$label, levels = unique (df$label))
+
+    if (type == "col") {
+        if (var == "ratio") df$ratio <- df$ratio - 1
+        if (var == "deviation" && dc$model$type == "ratio") df$deviation <- df$deviation - 1
+
+        p <- ggplot (df, aes (x = label, y = get (var)))
+
+        if (is.null (sep.dim))
+            p <- p + geom_col ()
+
+        else
+            p <- p + geom_col (aes (fill = get (sep.dim)), position = "dodge") +
+                guides (fill = guide_legend (title = sep.dim))
+
+        if (var == "ratio" || var == "deviation" && dc$model$type == 'ratio')
+            p <- p + scale_y_continuous (labels = function (x) x + 1)
+    }
+
+    if (type == "line") {
+        indices <- unique (df[, ununiq.dim, drop=FALSE])
+        indices$row <- 1:nrow(indices)
+        indices$label <- apply (indices, 1, function (row) paste (row[ununiq.dim], collapse=" / "))
+        df$index <- merge (df[, ununiq.dim, drop=FALSE], indices)$row
+
+        if (is.null (sep.dim))
+            p <- ggplot (df, aes (x = index, y = get (var)))
+
+        else
+            p <- ggplot (df, aes (x = index, y = get (var), color = get (sep.dim))) +
+                guides (color = guide_legend (title = sep.dim))
+
+        p <- p + geom_line () +
+            scale_x_continuous (breaks = 1:nrow(indices), labels = indices$label)
+
+        if (var == "ratio" || var == "deviation" && dc$model$type == 'ratio')
+            p <- p + geom_hline (yintercept = 1)
+    }
+
+    p <- p + ylab (var) +
+        xlab (paste (ununiq.dim, collapse = " x ")) +
+        theme (axis.text.x = element_text (angle = 90, hjust = 1))
+
+    if (length (uniq.dim) > 0) {
+        title1 <- paste (uniq.dim, collapse = " x ")
+        title2 <- paste (df[1, uniq.dim], collapse = " / ")
+        p <- p + labs (subtitle = paste (title1, "=", title2))
+    }
+
+    return (p)
+}
+
+
+plot.var <- function (obj, ...) { UseMethod ("plot.var") }
+plot.var.data.cube <- function (dc, var=NULL, sep.dim=NULL, type="col") {
+    var <- deparse (substitute (var))
+    if (var == "NULL") var <- dc$var.names[1]
+
+    sep.dim <- deparse (substitute (sep.dim))
+    if (sep.dim == "NULL") sep.dim <- NULL
+    
+    plot.var_(dc, var, type=type, sep.dim=sep.dim)
+}
+
+
+biplot.var_<- function (obj, ...) { UseMethod ("biplot.var_") }
+biplot.var_.data.cube <- function (dc, dim1, dim2, var) {
+    ## Get data
+    df <- as.data.frame (dc)
+
+    uniq.dim <- c()
+    for (d in dc$dim.names) if (length (unique (df[, d])) == 1) uniq.dim <- append (uniq.dim, d)
+    ununiq.dim <- dc$dim.names [! dc$dim.names %in% uniq.dim]
+
+    ## Build plot
+    p <- ggplot (data = df, aes (y = factor (get (dim1), levels = rev (dc$elm.names[[dim1]])), x = factor (get (dim2)))) +
+        xlab (dim2) + ylab (dim1)
+
+    if (var != "ratio" && var != "deviation") {
+        p <- p + geom_point (aes (size = get (var)), pch = 21, color = "black", fill = "grey") +
+            guides (size = guide_legend (title = var)) +
+            scale_size (range = c(1,20))
+    } else {
+        var.name <- dc$var.names[1]
+        p <- p + geom_point (aes (fill = get (var), size = get (var.name)), pch = 21, color = "black") +
+            guides (fill = guide_legend (title = var), size = guide_legend (title = var.name)) +
+            scale_size (range = c(1,20))
+
+        if (var == "ratio" || var == "deviation" && dc$model$type == "ratio") p <- p + scale_fill_gradient2 (low = "blue", mid = "white", high = "red", midpoint = 1)
+        else p <- p + scale_fill_gradient2 (low = "blue", mid = "white", high = "red", midpoint = 0)
+    }
+
+    p <- p + theme (axis.text.x = element_text (angle = 90, hjust = 1))
+
+    if (length (uniq.dim) > 0) {
+        title1 <- paste (uniq.dim, collapse = " x ")
+        title2 <- paste (df[1, uniq.dim], collapse = " / ")
+        p <- p + labs (subtitle = paste (title1, "=", title2))
+    }
+
+    return (p)
+}
+
+    
+biplot.var <- function (obj, ...) { UseMethod ("biplot.var") }
+biplot.var.data.cube <- function (dc, dim1, dim2, var=NULL) {
+    dim1 <- deparse (substitute (dim1))
+    dim2 <- deparse (substitute (dim2))
+
+    var <- deparse (substitute (var))
+    if (var == "NULL") var <- dc$var.names[1]
+
+    biplot.var_(dc, dim1, dim2, var=var)
+}
+
+
+
+plot.outlier <- function (obj, ...) { UseMethod ("plot.outlier") }
+plot.outlier.data.cube <- function (dc, labels=TRUE) {
+    dc.name <- paste (dc$dim.names, collapse=".")
+    var.name <- dc$var.names[1]
+
+    ## Get data
+    df <- as.data.frame (dc)
+
+    uniq.dim <- c()
+    for (d in dc$dim.names) if (length (unique (df[, d])) == 1) uniq.dim <- append (uniq.dim, d)
+    ununiq.dim <- dc$dim.names [! dc$dim.names %in% uniq.dim]
+
+    df$label <- apply (df, 1, function (row) paste (row[ununiq.dim], collapse=" / "))
+    
+    df$type <- ifelse (df$outlier == 0, "normal", "outlier")
+    types <- unique (df$type)
+
+    shape.values <- c(21,22)
+    if (length (types) == 1) {
+        if (types == "normal") { shape.values <- c(21) }
+        else if (types == "outlier") { shape.values <- c(22) }
+    }
+
+    ## Build plot
+    p <- ggplot (data = df, aes (x = get (var.name), y = ratio)) +
+        scale_x_log10 () + scale_y_log10 () +
+        geom_point (aes (fill = deviation, size = abs (deviation), shape = type)) +
+        scale_shape_manual (values = shape.values) +
+        scale_fill_gradient2 (low = "blue", high = "red") +
+        geom_hline (yintercept = 1) + 
+        xlab (var.name) + ylab (paste ("deviation wrt ratio"))
+
+    if (length (uniq.dim) > 0) {
+        title1 <- paste (uniq.dim, collapse = " x ")
+        title2 <- paste (df[1, uniq.dim], collapse = " / ")
+        p <- p + labs (subtitle = paste (title1, "=", title2))
+    }
+    
+    if (labels) p <- p + geom_text_repel (data = df [df$outlier != 0, ], aes (x = get (var.name), y = ratio, label = label))
+
+    return (p)
+}
+
+
+
+
+compute.model_<- function (obj, ...) { UseMethod ("compute.model_") }
+compute.model_.data.cube <- function (dc, dim, deviation.type = "ratio", deviation.threshold = 3) {
+    ## TODO: allow to use multidim data planes for normalisation
+    dim <- dc$dim.names [dc$dim.names %in% dim]
+    dc.name <- paste (dc$dim.names, collapse=".")
+    var.name <- dc$var.names[1]
+
+    for (d in dim) {
+        dp.name <- paste (d, collapse=".")
+        if (is.null (dc$obs[[dp.name]])) dc <- dc %>% compute.margin_(d)
+    }
+    
+    if (is.null (dc$obs[["."]])) dc <- dc %>% compute.margin_()
+    sum <- dc$obs[["."]]$vars[[var.name]]
+
+    ## Compute model
+    model <- rep (sum, length (dc$obs[[dc.name]]$vars[[var.name]]))
+    
+    for (d in dim) {
+        dp.name <- paste (d, collapse=".")
+        dc.data <- append (list (1:length(dc$obs[[dc.name]]$var[[var.name]])), dc$obs[[dc.name]]$elms[d])
+        names (dc.data) [1] <- "row"
+        dp.data <- append (dc$obs[[dp.name]]$elms, dc$obs[[dp.name]]$vars[var.name])
+
+        dist <- merge (dc.data, dp.data)
+        dist <- dist [order (dist$row), var.name] / sum
+        model <- model * dist
+    }
+
+    other.dim <- dc$dim.names [! dc$dim.names %in% dim]
+    for (d in other.dim) model <- model / dc$elm.nb[[d]]
+
+    dc$obs[[dc.name]]$vars[["model"]] <- model
+    dc$var.names <- unique (append (dc$var.names, "model"))
+
+    ## Compute deviation
+    dc$obs[[dc.name]]$vars[["ratio"]] <- dc$obs[[dc.name]]$vars[[var.name]] / dc$obs[[dc.name]]$vars[["model"]]
+    dc$var.names <- unique (append (dc$var.names, "ratio"))
+    
+    if (deviation.type == "ratio") {
+        dc$obs[[dc.name]]$vars[["deviation"]] <- dc$obs[[dc.name]]$vars[["ratio"]]
+    }
+
+    if (deviation.type == "poisson") {
+        dc$obs[[dc.name]]$vars[["deviation"]] <- ifelse (
+            dc$obs[[dc.name]]$vars[[var.name]] < dc$obs[[dc.name]]$vars[["model"]],
+            ppois (dc$obs[[dc.name]]$vars[[var.name]], dc$obs[[dc.name]]$vars[["model"]], lower.tail=TRUE, log.p=TRUE),
+            -ppois (dc$obs[[dc.name]]$vars[[var.name]], dc$obs[[dc.name]]$vars[["model"]], lower.tail=FALSE, log.p=TRUE)
+        )
+    }
+
+    if (deviation.type == "KLdiv") {
+        dc$obs[[dc.name]]$vars[["deviation"]] <- dc$obs[[dc.name]]$vars[[var.name]] / sum * log2 (dc$obs[[dc.name]]$vars[[var.name]] / dc$obs[[dc.name]]$vars[["model"]])
+    }
+
+    dc$var.names <- unique (append (dc$var.names, "deviation"))
+
+    ## Apply threshold
+    dev.mean <- mean (dc$obs[[dc.name]]$vars[["deviation"]])
+    dev.sd <- sd (dc$obs[[dc.name]]$vars[["deviation"]])
+
+    if (is.na (dev.sd)) { df$outlier <- rep (0, length (dc$obs[[dc.name]]$vars[["deviation"]])) }
+    else { dc$obs[[dc.name]]$vars[["outlier"]] <- findInterval (dc$obs[[dc.name]]$vars[["deviation"]], dev.mean + dev.sd * deviation.threshold * c(-1,1)) - 1 }
+
+    dc$var.names <- unique (append (dc$var.names, "outlier"))
+
+    ## Store model parameters
+    dc$model <- list()
+    dc$model$dim <- dim
+    dc$model$type <- deviation.type
+    dc$model$threshold <- deviation.threshold
     
     return (dc)
 }
 
 
-## Select dims
-select.dims <- function (obj, ...) { UseMethod ('select.dims') }
-select.dims.data.cube <- function (dc, dims) {
-    rem.dims <- dc$dim.names [! dc$dim.names %in% dims]    
-    return (remove.dims (dc, rem.dims))
+compute.model <- function (obj, ...) { UseMethod ("compute.model") }
+compute.model.data.cube <- function (dc, ..., deviation.type="ratio") {
+    dim <- sapply (eval (substitute (alist (...))), deparse)
+    compute.model_(dc, dim, deviation.type=deviation.type)
 }
 
 
-## Compute expected value
-compute.expected <- function (obj, ...) { UseMethod ('compute.expected') }
-compute.expected.data.cube <- function (dc, input='obs', output='exp', dims=c()) {
-    other.dims <- dc$dim.names[! dc$dim.names %in% dims]
 
-    ## TODO: simplify prod computation
-    if (length (dims) > 0 && length (other.dims) > 0) {
-        dc$data[[output]] <- apply (as.data.frame (cbind (
-            sapply (dims, function (dim) { return (dc$margins[[dim]]$data[[input]] [match (dc$cells[[dim]], dc$margins[[dim]]$cells[[dim]])]) }),
-            sapply (as.list (other.dims), function (dim) { return (rep (dc$data.sum[[input]] / dc$elem.nb[[dim]], length (dc$data[[input]]))) })
-        )), 1, prod) / dc$data.sum[[input]]^(dc$dim.nb-1)
-    }
-
-    else if (length (dims) > 0) {
-        dc$data[[output]] <- apply (as.data.frame (
-            sapply (dims, function (dim) { return (dc$margins[[dim]]$data[[input]] [match (dc$cells[[dim]], dc$margins[[dim]]$cells[[dim]])]) })
-        ), 1, prod) / dc$data.sum[[input]]^(dc$dim.nb-1)
-    }
-
-    else {
-        dc$data[[output]] <- apply (as.data.frame (
-            sapply (as.list (other.dims), function (dim) { return (rep (dc$data.sum[[input]] / dc$elem.nb[[dim]], length (dc$data[[input]]))) })
-        ), 1, prod) / dc$data.sum[[input]]^(dc$dim.nb-1)
-    }
-
-    return (dc)
-}
-
-
-## Compute divergence
-compute.deviated <- function (obj, ...) { UseMethod ('compute.deviated') }
-compute.deviated.data.cube <- function (dc, input='obs', model='exp', output='dev', type='KLdiv', sep.dim=NULL) {
-    sum <- dc$data.sum[[input]]
-    ##if (is.null (sep.dim)) { sum <- dc$data.sum[[input]] }
-    ##else { sum <- dc$margins[[sep.dim]]$obs [match (dc$data[[sep.dim]], dc$margins[[sep.dim]]$dim)] }
-
-    if (type == 'KLdiv') { dc$data[[output]] <- dc$data[[input]] / sum * log2 (dc$data[[input]] / dc$data[[model]]) }
-    else if (type == 'poisson') {
-        dc$data[[output]] <- ifelse (dc$data[[input]] < dc$data[[model]],
-                                     ppois (dc$data[[input]], dc$data[[model]], lower.tail=TRUE, log.p=TRUE),
-                                     -ppois (dc$data[[input]], dc$data[[model]], lower.tail=FALSE, log.p=TRUE)
-                                     )
-        if (length (dc$data[[output]]) == 0) { dc$data[[output]] <- numeric(0) }
-    }
-
-    return (dc)
-}
-
-
-## Compute outliers
-compute.outliers <- function (obj, ...) { UseMethod ('compute.outliers') }
-compute.outliers.data.cube <- function (dc, deviation='dev', outlier='out', threshold=3) {
-    dev.mean <- mean (dc$data[[deviation]])
-    dev.sd <- sd (dc$data[[deviation]])
-
-    if (is.na (dev.sd)) { dc$data[[outlier]] <- rep (0, length(dc$data[[deviation]])) }
-    else { dc$data[[outlier]] <- findInterval (dc$data[[deviation]], dev.mean + dev.sd * threshold * c(-1,1)) - 1 }
-
-    return (dc)
-}
 
     
 ## Print data summary
-data.summary <- function (obj, ...) { UseMethod ('data.summary') }
-data.summary.data.cube <- function (dc, data='obs') {
-    summary (dc$data[[data]])
+data.summary <- function (obj, ...) { UseMethod ("data.summary") }
+data.summary.data.cube <- function (dc, data="obs") {
+    summary (dc$obs[[dc.name]]$vars[[data]])
 }
 
 
 ## Plot data distribution
-data.distribution <- function (obj, ...) { UseMethod ('data.distribution') }
-data.distribution.data.cube <- function (dc, data='obs', log='', threshold=NULL) {
-    p <- ggplot (as.data.frame (dc$data), aes (x=get(data))) +
+data.distribution <- function (obj, ...) { UseMethod ("data.distribution") }
+data.distribution.data.cube <- function (dc, data="obs", log="", threshold=NULL) {
+    p <- ggplot (as.data.frame (dc$obs[[dc.name]]$vars), aes (x=get(data))) +
         geom_histogram (bins=100, aes (y=..count..), color="black", fill="blue", alpha=0.3) +
         ## stat_density (aes (y=..count..), color="black", fill="blue", alpha=0.3) +
-        theme_bw () #+ theme (text=elem_text (size=20))
+        theme_bw () #+ theme (text=elm_text (size=20))
 
-    title <- paste ('Distribution of', data)
+    title <- paste ("Distribution of", data)
     
     if (log == "x") {
-        logmax <- ceiling(log10(max(dc$data[[data]])))
+        logmax <- ceiling(log10(max(dc$obs[[dc.name]]$vars[[data]])))
         breaks <- 10 ^ seq (0, logmax, logmax/10)
-        title <- paste (title, '(logarithmic scale)')
+        title <- paste (title, "(logarithmic scale)")
 
         p <- p + scale_x_continuous (trans="log", breaks=breaks) +
             scale_y_continuous (breaks=scales::pretty_breaks (n=10))
     }
 
     else if (log == "y") {
-        title <- paste (title, '(logarithmic scale)')
+        title <- paste (title, "(logarithmic scale)")
 
         p <- p + scale_y_continuous (trans="log")
     }
     
     else if (log == "xy") {
-        logmax <- ceiling(log10(max(dc$data[[data]])))
+        logmax <- ceiling(log10(max(dc$obs[[dc.name]]$vars[[data]])))
         breaks <- 10 ^ seq (0, logmax, logmax/10)
-        title <- paste (title, '(logarithmic scales)')
+        title <- paste (title, "(logarithmic scales)")
         
         p <- p + scale_x_continuous (trans="log", breaks=breaks) +
             scale_y_continuous (trans="log")
     }
 
     if (! is.null (threshold)) {
-        data.mean <- mean (dc$data[[data]])
-        data.sd <- sd (dc$data[[data]])
+        data.mean <- mean (dc$obs[[dc.name]]$vars[[data]])
+        data.sd <- sd (dc$obs[[dc.name]]$vars[[data]])
 
-        p <- p + geom_vline (xintercept=data.mean + threshold * data.sd, size=2, color='red') +
-            geom_vline (xintercept=data.mean - threshold * data.sd, size=2, color='red')
+        p <- p + geom_vline (xintercept=data.mean + threshold * data.sd, size=2, color="red") +
+            geom_vline (xintercept=data.mean - threshold * data.sd, size=2, color="red")
     }
     
     p <- p + labs (title=title) +
-        xlab (data) + ylab ('count')
+        xlab (data) + ylab ("count")
 
     return (p)
 }
 
 
-## Plot data
-plot.data <- function (obj, ...) { UseMethod ('plot.data') }
-plot.data.data.cube <- function (dc, data='obs', rank=NULL, display=NULL, sep.dim=NULL) {
-    df <- as.data.frame (cbind (as.data.frame (dc$cells), as.data.frame (dc$data)))
-
-    if (! is.null (display)) { df <- df[df[[display]],] }
-    if (nrow(df) == 0) { return (NULL); }
-    
-    if (! is.null (rank)) { df <- df[order(df[[rank]]),] }
-
-    dummy <- lapply (dc$dim.names, function (dim) { return (df[[dim]] <<- dc$elem.names[[dim]][df[[dim]]]) })
-    
-    ratio.index <- regexpr ('/', data)
-
-    if (ratio.index != -1) {
-        data1 <- substring (data, 1, ratio.index-1)
-        data2 <- substring (data, ratio.index+1, nchar(data))
-        df$data <- df[[data1]] / df[[data2]] - 1
-    }
-    else { df$data <- df[[data]] }
-
-    if (is.null (sep.dim)) {
-        df$label <- apply (df, 1, function (row) { return (paste (row[dc$dim.names], collapse=', ')) })
-        df$label <- factor (df$label, levels=unique(df$label))
-
-        p <- ggplot (df, aes (x=label, y=data)) +
-            geom_bar (stat="identity")
-    }
-
-    else {
-        dim.names <- dc$dim.names[dc$dim.names != sep.dim]
-        df$label <- apply (df, 1, function (row) { return (paste (row[dim.names], collapse=', ')) })
-        df$label <- factor (df$label, levels=unique(df$label))
-
-        p <- ggplot (df, aes(x=label, y=data)) +
-            geom_bar (aes (fill=get(sep.dim)), position="dodge", stat="identity")
-    }
-
-    if (ratio.index != -1) { p <- p + scale_y_continuous (labels=function (x) x+1) }
-
-    p <- p +
-        ylab (data) +
-        theme_bw () +
-        theme (axis.text.x = element_text (angle = 90, hjust = 1)) #+
-    ##theme (text=elem_text (size=20))
-        
-    return (p)
-}
-
-
-## Plot outliers
-plot.outliers <- function (obj, ...) { UseMethod ('plot.outliers') }
-plot.outliers.data.cube <- function (dc, input='obs', model='exp', deviation='dev', outlier='out', display=NULL, labels=FALSE) {
-    df <- as.data.frame (cbind (as.data.frame (dc$cells), as.data.frame (dc$data)))
-
-    if (! is.null (display)) { df <- df[df[[display]],] }
-    if (nrow(df) == 0) { return (NULL); }
-
-    dummy <- lapply (dc$dim.names, function (dim) { return (df[[dim]] <<- dc$elem.names[[dim]][df[[dim]]]) })
-    df$label <- apply (df, 1, function (row) paste (row[dc$dim.names], collapse=' '))
-
-    df$ratio <- df$obs / df$exp
-    df$type <- ifelse (df[[outlier]] == 0, 'normal', 'outlier')
-
-    shape.values <- c(21,22)
-    types <- unique (df$type)
-    if (length(types) == 1) {
-        if (types == 'normal') { shape.values <- c(21) }
-        else if (types == 'outlier') { shape.values <- c(22) }
-    }
-    
-    p <- ggplot (data=df, aes (x=get(input), y=ratio)) +
-        scale_x_log10 () + scale_y_log10 () +
-        geom_point (aes (fill=dev, size=abs(dev), shape=type)) +
-        scale_shape_manual (values=shape.values) +
-        scale_fill_gradient2 (low='blue', high='red') +
-        geom_hline (yintercept=1) + 
-        labs (title='Outliers') + xlab (input) + ylab (paste (input, '/', model)) +
-        theme_bw () ##+ theme (text=elem_text (size=20))
-
-    if (labels) { p <- p + geom_text_repel (data=df[df[[outlier]] != 0,], aes (x=get(input), y=ratio, label=label)) }
-    
-    return (p)
-}
 
 
 ## List outliers
-list.outliers <- function (obj, ...) { UseMethod ('list.outliers') }
-list.outliers.data.cube <- function (dc, input='obs', model='exp', deviation='dev', outlier='out') {
+list.outliers <- function (obj, ...) { UseMethod ("list.outliers") }
+list.outliers.data.cube <- function (dc, input="obs", model="exp", deviation="dev", outlier="out") {
     
-    df <- as.data.frame (cbind (as.data.frame (dc$cells), as.data.frame (dc$data)))
-    if (! is.null (display)) { df <- df[df[[display]],] }
+    data.frame <- as.data.frame (cbind (as.data.frame (dc$obs[[dc.name]]$elms), as.data.frame (dc$obs[[dc.name]]$vars)))
+    if (! is.null (display)) { data.frame <- data.frame[data.frame[[display]],] }
     
-    df$ratio <- df$obs / df$exp
-    df$type <- ifelse (df[[outlier]] == 0, 'normal', 'abnormal')
+    data.frame$ratio <- data.frame$obs / data.frame$exp
+    data.frame$type <- ifelse (data.frame[[outlier]] == 0, "normal", "abnormal")
     
-    dummy <- lapply (dc$dim.names, function (dim) { return (df[[dim]] <<- dc$elem.names[[dim]][df[[dim]]]) })
-    df$label <- apply (df, 1, function (row) paste (row[dc$dim.names], collapse=' '))
+    dummy <- lapply (dc$dim.names, function (dim) { return (data.frame[[dim]] <<- dc$elm.names[[dim]][data.frame[[dim]]]) })
+    data.frame$label <- apply (data.frame, 1, function (row) paste (row[dc$dim.names], collapse=" "))
 
-    p <- ggplot (data=df, aes (x=get(input), y=ratio)) +
+    p <- ggplot (data=data.frame, aes (x=get(input), y=ratio)) +
         scale_x_log10 () + scale_y_log10 () +
         geom_point (aes (size=abs(dev), fill=dev, shape=type)) +
-        scale_shape_manual (values=c(22,21)) +
-        scale_fill_gradient2 (low='blue', high='red') +
-        labs (title='Outliers') + xlab (input) + ylab (paste (input, '/', model)) +
-        theme_bw () ##+ theme (text=elem_text (size=20))
+        scale_shape_manual (val.obs=c(22,21)) +
+        scale_fill_gradient2 (low="blue", high="red") +
+        labs (title="Outliers") + xlab (input) + ylab (paste (input, "/", model)) +
+        theme_bw () ##+ theme (text=elm_text (size=20))
 
-    if (labels) { p <- p + geom_text_repel (data=df[df[[outlier]] != 0,], aes (x=get(input), y=ratio, label=label)) }
+    if (labels) { p <- p + geom_text_repel (data=data.frame[data.frame[[outlier]] != 0,], aes (x=get(input), y=ratio, label=label)) }
     
     return (p)
 }
 
 
 ## Draw cube
-draw.cube <- function (obj, ...) { UseMethod ('draw.cube') }
+draw.cube <- function (obj, ...) { UseMethod ("draw.cube") }
 draw.cube.data.cube <- function (dc, dims=dc$dim.names, dim.dev=c()) {
     open3d (userMatrix = rotationMatrix (pi/5,1,0,0) %*% rotationMatrix (pi/4,0,-1,0))
     cell3d <- function (x, y, z, dx, dy, dz, color="green", alpha=1, lwd=5) {
@@ -460,7 +951,7 @@ draw.cube.data.cube <- function (dc, dims=dc$dim.names, dim.dev=c()) {
 
     for (i in 1:3) {
         if (dims[i] %in% dc$dim.names) {
-            cv[[i]] <- 1:min(length(dc$elem.names[[dims[i]]]),5)
+            cv[[i]] <- 1:min(length(dc$elm.names[[dims[i]]]),5)
             dv[[i]] <- 1
         } else {
             cv[[i]] <- c(1)

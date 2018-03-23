@@ -10,7 +10,7 @@ curl -s http://localhost:8000/outliers -d '{"dataset":"guardian.2016","param":{"
 ## Test full pipeline
 curl -H "Content-Type: application/json" -s https://www.fcg-net.org/penelope/data/comment_structure -d '{"collection":"GuardianArticles", "start_date":"2017-01-02T00:00:00.000Z", "end_date":"2017-01-30T00:00:00.000Z", "limit":1}' > guardian.raw
 
-echo '{"data":'$(< guardian.raw)',"param":{"time":{"reference":"comment","resolution":"day"}}}' | curl -s http://localhost:8000/format_comments -d @- > guardian.cube
+echo '{"data":'$(< guardian.raw)',"param":{"time":{"reference":"comment","resolution":"day"}}}' | curl -s https://penelope.huma-num.fr/datastore/format_comments -d @- > guardian.cube
 
-echo '{"data":'$(< guardian.cube)',"param":{"select":[{"dim":"time","select":"all"},{"dim":"topic","select":"some","head":5},{"dim":"user","select":"some","head":30}],"normalise":["topic","time"],"stat.test":{"type":"poisson","threshold":3}}}' | curl -s http://localhost:8000/outliers -d @- > guardian.outliers
+echo '{"data":'$(< guardian.cube)',"param":{"select":[{"dim":"time","select":"all"},{"dim":"topic","select":"some","head":5},{"dim":"user","select":"some","head":30}],"normalise":["topic","time"],"stat.test":{"type":"poisson","threshold":3}}}' | curl -s https://penelope.huma-num.fr/datastore/outliers -d @- > guardian.outliers
 
