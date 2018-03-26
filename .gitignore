@@ -14,8 +14,8 @@ inst/doc
 
 # DATA FILES
 rsconnect
-data
-!data/data.cube.example.R
+data/*
+!data/data.cube.example.csv
 !data/guardian.2016.csv
 !data/guardian.small.csv
 !data/opinion.traces.csv
