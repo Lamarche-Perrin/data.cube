@@ -1,5 +1,6 @@
-rm(list=ls())
-source ('../data.cube.1.1.R')
+rm (list = ls())
+
+source ('../src/data.cube.R')
 
 ## Import dataset
 df <- read.csv ('../data/guardian.small.csv', stringsAsFactors=FALSE)

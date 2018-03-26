@@ -1,6 +1,6 @@
 rm (list = ls())
 
-source ("../data.cube.1.1.R")
+source ("../src/data.cube.R")
 
 
 ## 1. DATA PREPARATION
@@ -19,10 +19,7 @@ dc <- as.data.cube (
 ## 1.3. See intern data structure
 str (dc)
 
-## 1.4. Transform data.cube back into data.frame
-dc %>% as.data.frame () %>% head ()
-
-## 1.5. Properties of the data.cube
+## 1.4. Properties of the data.cube
 dim.nb (dc)
 dim.names (dc)
 
@@ -31,6 +28,11 @@ elm.names (dc)
 
 elm.nb (dc, media)
 elm.names (dc, media)
+
+summary (dc)
+
+## 1.5. Transform data.cube back into data.frame
+dc %>% as.data.frame () %>% head ()
 
 
 ## 2. EXPLORE TEMPORAL DIMENSION
@@ -43,13 +45,13 @@ dc %>%
 ## 2.2. Order temporal dimension by dates and return it as a data.frame
 dc %>%
     select.dim (time) %>%
-    arrange.dim (time) %>%
+    arrange.elm (time) %>%
     as.data.frame ()
 
 ## 2.3. Order temporal dimension by dates, and save the modification into the data structure
 dc <-
     dc %>%
-    arrange.dim (time)
+    arrange.elm (time)
 
 dc %>%
     select.dim (time) %>%
@@ -58,11 +60,11 @@ dc %>%
 ## 2.4. Plot variable along the temporal dimension
 dc %>%
     select.dim (time) %>%
-    plot.var ()
+    plot.obs ()
 
 dc %>%
     select.dim (time) %>%
-    plot.var (type = "line")
+    plot.obs (type = "line")
 
 ## 2.5. Suppress first and last week in the data, then plot variable along the temporal dimension
 weeks <- elm.names (dc, time)
@@ -73,7 +75,7 @@ max (weeks)
 dc %>%
     select.dim (time) %>%
     remove.elm (time, c (min (weeks), max (weeks)), suppress = TRUE) %>%
-    plot.var ()
+    plot.obs ()
 
 ## 2.6. Suppress first and last week in the data, and save the modification into the data structure
 dc <-
@@ -82,7 +84,7 @@ dc <-
 
 dc %>%
     select.dim (time) %>%
-    plot.var ()
+    plot.obs ()
 
 
 ## 3. EXPLORE SPACIAL DIMENSION
@@ -90,22 +92,22 @@ dc %>%
 ## 3.1. Ordered by countries' name
 dc %>%
     select.dim (space) %>%
-    arrange.dim (space) %>%
-    plot.var ()
+    arrange.elm (space) %>%
+    plot.obs ()
 
 ## 3.2. Only the top 50 countries, ordered by values
 dc %>%
     select.dim (space) %>%
-    head (space, 50) %>%
-    arrange.var () %>%
-    plot.var ()
+    select.elm (space, top.nb = 50) %>%
+    arrange.obs () %>%
+    plot.obs ()
 
 ## 3.3. Only countries with more than 5000 articles, ordered by values
 dc %>%
     select.dim (space) %>%
     filter.elm (space, articles > 5000) %>%
-    arrange.var () %>%
-    plot.var ()
+    arrange.obs () %>%
+    plot.obs ()
 
 ## 3.4. Only a subset of designated countries, ordered by values
 elm.names (dc, space)
@@ -114,8 +116,8 @@ G8 <- c ("USA", "JPN", "DEU", "FRA", "RUS", "GBR", "ITA", "CAN")
 dc %>%
     select.dim (space) %>%
     select.elm (space, G8) %>%
-    arrange.var () %>%
-    plot.var ()
+    arrange.obs () %>%
+    plot.obs ()
 
 
 ## 4. EXPLORE SPACIO-TEMPORAL DIMENSION
@@ -124,24 +126,24 @@ dc %>%
 dc %>%
     select.dim (space, time) %>%
     select.elm (space, G8) %>%
-    plot.var ()
+    plot.obs ()
 
 ## 4.2. Plot space along time
 dc %>%
     select.dim (space, time) %>%
     select.elm (space, G8) %>%
-    plot.var (sep.dim = space)
+    plot.obs (sep.dim = space)
 
 dc %>%
     select.dim (space, time) %>%
     select.elm (space, G8) %>%
-    plot.var (sep.dim = space, type = "line")
+    plot.obs (sep.dim = space, type = "line")
 
 ## 4.3. Bidimensional plot of space and time
 dc %>%
     select.dim (space, time) %>%
     select.elm (space, G8) %>%
-    biplot.var (space, time)
+    biplot.obs (space, time)
 
 ## 4.4. Bidimensinal plot of space and time, for a particular media
 elm.names (dc, media)
@@ -150,7 +152,7 @@ dc %>%
     select.dim (media, space, time) %>%
     select.elm (space, G8) %>%
     select.elm (media, "fr_FRA_lmonde_int") %>%
-    biplot.var (space, time)
+    biplot.obs (space, time)
 
 
 ## 5. FINDING OUTLIERS
@@ -160,41 +162,32 @@ weeks.2014 <- weeks [substring (weeks, 1, 4) == "2014"]
 
 dc2 <-
     dc %>%
-    select.dim (media, space, time) %>%
-    select.elm (space, G8) %>%
-    select.elm (time, weeks.2014) %>%
-    select.elm (media, "fr_FRA_lmonde_int")
-
-dc2 <-
-    dc %>%
     select.dim (space, time) %>%
     select.elm (time, weeks.2014, suppress=TRUE) %>%
     select.elm (space, G8)
 
-source ("../data.cube.1.1.R")
-
 dc2 %>%
-    plot.var (sep.dim = space, type="line")
+    plot.obs (sep.dim = space, type="line")
 
 dc2 %>%
     compute.model () %>%
-    plot.var (model, sep.dim = space, type="line")
+    plot.obs (model, sep.dim = space, type="line")
 
 dc2 %>%
     compute.model (space) %>%
-    plot.var (model, sep.dim = space, type="line")
+    plot.obs (model, sep.dim = space, type="line")
 
 dc2 %>%
     compute.model (space) %>%
-    plot.var (ratio, sep.dim = space)
+    plot.obs (ratio, sep.dim = space)
 
 dc2 %>%
     compute.model (space, time) %>%
-    plot.var (ratio, sep.dim = space)
+    plot.obs (ratio, sep.dim = space)
 
 dc2 %>%
     compute.model (space, time, deviation.type = 'poisson') %>%
-    plot.var (deviation, sep.dim = space)
+    plot.obs (deviation, sep.dim = space)
 
 dc2 %>%
     compute.model (space, time, deviation.type = 'poisson') %>%
@@ -208,47 +201,53 @@ dc %>%
 dc %>%
     select.dim (space, time) %>%
     compute.model (space, time, deviation.type = 'poisson') %>%
-    filter.var (articles >= 100) %>%
-    filter.var (ratio >= 1) %>%
+    filter.obs (articles >= 100) %>%
+    filter.obs (ratio >= 1) %>%
     plot.outlier ()
 
 dc %>%
     select.dim (media, space) %>%
     compute.model (space, media, deviation.type = 'poisson') %>%
-    filter.var (articles >= 100) %>%
-    filter.var (ratio >= 1) %>%
+    filter.obs (articles >= 100) %>%
+    filter.obs (ratio >= 1) %>%
     plot.outlier ()
 
 dc %>%
     select.dim (media, time) %>%
     compute.model (time, media, deviation.type = 'poisson') %>%
-    filter.var (articles >= 100) %>%
-    filter.var (ratio >= 1) %>%
+    filter.obs (articles >= 100) %>%
+    filter.obs (ratio >= 1) %>%
     plot.outlier ()
-
 
 dc %>%
     select.dim (media, space) %>%
     compute.model (space, media, deviation.type = 'poisson') %>%
-    filter.var (outlier == 1) %>%
-    arrange.var (deviation) %>%
+    filter.obs (outlier == 1) %>%
+    arrange.obs (deviation) %>%
     as.data.frame ()
 
 dc %>%
     select.dim (media, space) %>%
-    head (space, 10) %>%
-    head (media, 5) %>%
     compute.model (space, media, deviation.type = 'poisson') %>%
-    biplot.var (media, space, deviation)
+    filter.obs (outlier == 1) %>%
+    arrange.obs (deviation) %>%
+    as.data.frame ()
+
+dc %>%
+    select.dim (media, space) %>%
+    select.elm (space, top.nb = 10) %>%
+    select.elm (media, top.nb = 5) %>%
+    compute.model (space, media, deviation.type = 'poisson') %>%
+    biplot.obs (media, space, deviation)
 
 elm.names (dc, time)
 
 dc %>%
     select.dim (media, space) %>%
-    head (space, 50) %>%
-    head (media, 10) %>%
+    select.elm (space, top.nb = 50) %>%
+    select.elm (media, top.nb = 10) %>%
     compute.model (space, media, deviation.type = 'poisson') %>%
-    biplot.var (media, space)
+    biplot.obs (media, space)
 
 
 

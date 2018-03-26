@@ -32,9 +32,9 @@
 #'
 #' The package defines a new data structure called data.cube that can be
 #' fed with a classical \code{data.frame} encoding a list of numeric
-#' observations described according to several categorical dimensions. For
+#' variables described according to several categorical dimensions. For
 #' example, in the case of Twitter data, it can be the number of tweets
-#' (numeric observation) that have been published by a given user (first
+#' (numeric variable) that have been published by a given user (first
 #' dimension) about a given topic (second dimension) at a given date (third
 #' dimension). The input data.frame hence takes the form of a list of
 #' quadruplets (user, topic, date, number of tweets).
@@ -158,24 +158,25 @@ as.data.cube <- function (obj, ...) { UseMethod ("as.data.cube") }
 #' @title Transform a \code{data.frame} into a \code{data.cube}.
 #' 
 #' @description
-#' \code{as.data.cube} transforms a \code{data.frame} into a
+#' \code{as.data.cube()} transforms a \code{data.frame} into a
 #' \code{data.cube} by interpreting its rows as observations and its
-#' columns either as categorical parts of the observations (elements within
-#' dimensions) or as numerical pars ot the observations (values taken by
-#' the variables).
+#' columns either as categorical descriptions of the observations (elements within
+#' \code{data.cube} dimensions) or as numerical descriptions of the observations (values taken by
+#' the \code{data.cube} variables).
 #'
 #' @param df A \code{data.frame} to be transformed into a \code{data.cube}.
 #'
-#' @param dim A list giving the columns of \code{df} to be used as
+#' @param dim A list of unquoted expressions giving the columns of \code{df} to be used as
 #' dimensions for the \code{data.cube}. If names are provided, they are
 #' interpreted as names for the corresponding dimensions.
 #'
-#' @param var A list giving the columns of \code{df} to be used as
+#' @param var A list of unquoted expressions giving the columns of \code{df} to be used as
 #' variables for the \code{data.cube}. If names are provided, they are
 #' interpreted as names for the corresponding variables.
 #' 
-#' @return A \code{data.cube}.
+#' @return A \code{data.cube} resulting from the transformation of \code{df}.
 #'
+#' @method as.data.cube data.frame
 #' @export
 as.data.cube.data.frame <- function (df, dim, var) {
     dim <- lapply (substitute (dim), deparse)
@@ -218,21 +219,22 @@ as.data.frame_.data.cube <- function (dc, dim = dc$dim.names, var = dc$var.names
 
 
 #' @title Transform a \code{data.cube} into a \code{data.frame}.
-#' 
+#'
 #' @description
-#' \code{as.data.frame} transforms a \code{data.cube} into a
-#' \code{data.frame} by presenting observation in rows, and dimensions and
+#' \code{as.data.frame()} transforms a \code{data.cube} into a
+#' \code{data.frame} by presenting observations in rows, and dimensions and
 #' variables in columns.
 #'
 #' @param dc A \code{data.cube} to be transformed into a \code{data.frame}.
 #'
-#' @param complete A logical value indicating if observations for which
-#' variables are all equal zero should be registered in the returned
-#' \code{data.frame}. If not, the returned \code{data.frame} hence provides
+#' @param complete A logical indicating if observations for which
+#' variables all equal zero should be presented in the output
+#' \code{data.frame}. If not, the output \code{data.frame} hence provides
 #' a sparse representation of the data.
 #'
-#' @return A \code{data.frame}.
+#' @return A \code{data.frame} resulting from the transformation of \code{dc}.
 #'
+#' @method as.data.frame data.cube
 #' @export
 as.data.frame.data.cube <- function (dc, complete=FALSE) dc %>% as.data.frame_(complete=complete)
 
@@ -243,16 +245,25 @@ as.data.frame.var <- function (obj, ...) { UseMethod ("as.data.frame.var") }
 as.data.frame.var.data.cube <- function (dc, complete=FALSE) dc %>% as.data.frame_(dim = list(), complete=complete)
 
 
-dim.names <- function (obj, ...) { UseMethod ("dim.names") }
-
-#' @title Get names of the dimensions of a \code{data.cube}.
+#' @title Get basic properties.
+#'
+#' @description
+#' A collection of functions to get basic properties of a \code{data.cube}.
 #' 
 #' @param dc A \code{data.cube}.
+#' @param ... Optional. Names of the dimensions of interest.
 #'
+#' @name property
+#' @export property
+NULL
+
+dim.names <- function (obj, ...) { UseMethod ("dim.names") }
+
 #' @return A character vector giving the names of the dimensions of
 #' \code{dc}.
 #'
-#' @export
+#' @rdname property
+#' @method dim.names data.cube
 dim.names.data.cube <- function (dc) dc$dim.names
 
 elm.names_<- function (obj, ...) { UseMethod ("elm.names_") }
@@ -263,17 +274,11 @@ elm.names_.data.cube <- function (dc, dim=dc$dim.names) {
 
 elm.names <- function (obj, ...) { UseMethod ("elm.names") }
 
-#' @title Get names of the elements in the dimensions of a
-#' \code{data.cube}.
-#' 
-#' @param dc A \code{data.cube}.
-#'
-#' @param ... Optional. Names of the dimensions of interest.
-#' 
 #' @return A named list of character vectors giving the names of the
 #' elements in the dimensions of \code{dc}.
 #'
-#' @export
+#' @rdname property
+#' @method elm.names data.cube
 elm.names.data.cube <- function (dc, ...) {
     dim <- sapply (eval (substitute (alist (...))), deparse)
     if (length (dim) == 0) dim <- dc$dim.names
@@ -282,25 +287,19 @@ elm.names.data.cube <- function (dc, ...) {
 
 var.names <- function (obj, ...) { UseMethod ("var.names") }
 
-#' @title Get names of the variables of a \code{data.cube}.
-#' 
-#' @param dc A \code{data.cube}.
-#'
 #' @return A character vector giving the names of the variables of
 #' \code{dc}.
 #'
-#' @export
+#' @rdname property
+#' @method var.names data.cube
 var.names.data.cube <- function (dc) dc$var.names
 
 dim.nb <- function (obj, ...) { UseMethod ("dim.nb") }
 
-#' @title Get the number of dimensions of a \code{data.cube}.
-#' 
-#' @param dc A \code{data.cube}.
-#'
 #' @return An integer giving the number of dimensions of \code{dc}.
 #'
-#' @export
+#' @rdname property
+#' @method dim.nb data.cube
 dim.nb.data.cube <- function (dc) dc$dim.nb
 
 elm.nb_<- function (obj, ...) { UseMethod ("elm.nb_") }
@@ -311,17 +310,11 @@ elm.nb_.data.cube <- function (dc, dim=dc$dim.names) {
 
 elm.nb <- function (obj, ...) { UseMethod ("elm.nb") }
 
-#' @title Get the number of elements in the dimensions of a
-#' \code{data.cube}.
-#' 
-#' @param dc A \code{data.cube}.
-#'
-#' @param ... Optional. Names of the dimensions of interest.
-#' 
 #' @return A named list of integers giving the number of elements in the
 #' dimensions of \code{dc}.
 #'
-#' @export
+#' @rdname property
+#' @method elm.nb data.cube
 elm.nb.data.cube <- function (dc, ...) {
     dim <- sapply (eval (substitute (alist (...))), deparse)
     if (length (dim) == 0) dim <- dc$dim.names
@@ -330,14 +323,47 @@ elm.nb.data.cube <- function (dc, ...) {
 
 var.nb <- function (obj, ...) { UseMethod ("var.nb") }
 
-#' @title Get the number of variables of a \code{data.cube}.
-#' 
-#' @param dc A \code{data.cube}.
-#'
 #' @return An integer giving the number of variables of \code{dc}.
 #'
-#' @export
+#' @rdname property
+#' @method var.nb data.cube
 var.nb.data.cube <- function (dc) dc$var.nb
+
+
+summary.data.cube <- function (dc) {
+    dc.name <- paste (dc$dim.names, collapse=".")
+    
+    for (var in dc$var.names) {
+        cat ("'", var, "' variable:\n", sep="")
+        obs.nb <- length (dc$obs[[dc.name]]$vars[[var]])
+        cat (" -> ", obs.nb, " observation", ifelse (obs.nb > 1, "s", ""), "\n", sep="")
+        print (summary (dc$obs[[dc.name]]$vars[[var]]))
+        cat ("\n")
+    }
+
+    elm.names <- lapply (dc$elm.names, function (d) {
+        i <- 1
+        str <- d[i]
+        while (nchar (str) < 30 && i < length (d)) {
+            i <- i+1
+            str <- paste (str, d[i], sep=", ")
+        }
+        if (i < length (d)) str <- paste (str, "...", sep="")
+        return (str)
+    })
+
+    for (dim in dc$dim.names) {
+        cat ("'", dim, "' dimension:\n", sep="")
+        elm.nb <- dc$elm.nb[[dim]]
+        cat (" -> ", elm.nb, " element", ifelse (elm.nb > 1, "s", ""), ": ", elm.names[[dim]], "\n", sep="")
+        dp.name <- dim
+        for (var in names (dc$obs[[dp.name]]$vars)) {
+            cat (" -> '", var, "' distribution:\n", sep="")
+            print (summary (dc$obs[[dp.name]]$vars[[var]]))
+        }
+        cat ("\n")
+    }
+}
 
 
 
@@ -432,6 +458,19 @@ select.dim_.data.cube <- function (dc, dim) {
 }
 
 select.dim <- function (obj, ...) { UseMethod ("select.dim") }
+
+#' @title Select dimensions of interest.
+#'
+#' @description
+#' \code{select.dim()} selects a subset of dimensions within the \code{data.cube} by aggregating together the elements of each unselected dimension.
+#' This consists in replacing the datacube by one of its marginal dataplane.
+#'
+#' @param dc A datacube.
+#' @param ... A list of unquoted expressions giving the dimensions to select.
+#' @return The resulting datacube.
+#'
+#' @method select.dim data.cube
+#' @export
 select.dim.data.cube <- function (dc, ...) {
     dim <- sapply (eval (substitute (alist (...))), deparse)
     select.dim_(dc, dim)
@@ -463,16 +502,43 @@ select.elm.indices_.data.cube <- function (dc, dim, elm.indices, suppress) {
 }
 
 
-select.elm_<- function (obj, ...) { UseMethod ("select.elm_") }
-select.elm_.data.cube <- function (dc, dim, elm, suppress) {
-    elm.indices <- seq (length (dc$elm.names[[dim]])) [dc$elm.names[[dim]] %in% elm]
-    dc %>% select.elm.indices_(dim, elm.indices, suppress)
-}
-
 select.elm <- function (obj, ...) { UseMethod ("select.elm") }
-select.elm.data.cube <- function (dc, dim, elm, suppress=FALSE) {
+
+#' @title Select, remove, or filter elements within a given dimension.
+#'
+#' @description
+#' \code{select.elm()}, \code{remove.elm()}, and \code{filter.elm()} respectively select, remove, or filter a subset of elements within a particular dimension.
+#' This consists in suppressing all observations that correspond to the unselected, removed, or unfiltered elements.
+#'
+#' @param dc A datacube.
+#' @param dim An unquoted expression giving the dimension whose elements are selected, removed, or filtered.
+#' @param elm Optional. A character vector giving the names of the elements to select or to remove.
+#' @param top.nb bot.nb Optional. An integer giving the number of elements to select or to remove among the ones with the highest or the lowest values of the specified variable (see \code{var}).
+#' @param var Optional. Can be specified if either \code{top.nb} or \code{bot.nb} is specified. An unquoted expression giving the variable to consider when selecting or removing the top or the bottom elements. If not specified, the datacube's first variable is taken. Can also be \code{model}, \code{ratio}, or \code{deviation} if a marginal model has been computed.
+#' @param filter An unquoted expression specifying the condition that is used to filter elements.
+#' @param suppress A logical indicating if the corresponding observations should be fully suppressed (recomputing the datacube's marginals) or simply hidden (no longer shown when processing the datacube).
+#' @return The resulting datacube.
+#'
+#' @method select.elm data.cube
+#' @export
+select.elm.data.cube <- function (dc, dim, elm=NULL, top.nb=NULL, bot.nb=NULL, var=NULL, suppress=FALSE) {
     dim <- deparse (substitute (dim))
-    dc %>% select.elm_(dim, elm, suppress)
+    
+    if (! is.null (elm)) {
+        elm.indices <- seq (length (dc$elm.names[[dim]])) [dc$elm.names[[dim]] %in% elm]
+        dc %>% select.elm.indices_(dim, elm.indices, suppress)
+    } else {
+        var <- deparse (substitute (var))
+        if (var == "NULL") var <- dc$var.names[1]
+
+        if (is.null (dc$obs[[dim]]) || is.null (dc$obs[[dim]]$vars[[var]])) dc <- compute.margin_(dc, dim)
+
+        if (! is.null (top.nb)) elm.indices <- head (dc$obs[[dim]]$elms[[dim]] [order (dc$obs[[dim]]$vars[[dc$var.names[1]]], decreasing=TRUE)], top.nb)
+        else if (! is.null (bot.nb)) elm.indices <- tail (dc$obs[[dim]]$elms[[dim]] [order (dc$obs[[dim]]$vars[[dc$var.names[1]]], decreasing=TRUE)], bot.nb)
+
+        elm.indices <- elm.indices [order (elm.indices)]
+        dc %>% select.elm.indices_(dim, elm.indices, suppress)
+    }
 }
 
 
@@ -483,44 +549,21 @@ remove.elm_.data.cube <- function (dc, dim, elm, suppress=FALSE) {
 }
 
 remove.elm <- function (obj, ...) { UseMethod ("remove.elm") }
-remove.elm.data.cube <- function (dc, dim, elm, suppress=FALSE) {
+
+#' @method remove.elm data.cube
+#' @rdname select.elm.data.cube
+remove.elm.data.cube <- function (dc, dim, elm=NULL, top=NULL, bot=NULL, var=NULL, suppress=FALSE) {
     dim <- deparse (substitute (dim))
     dc %>% remove.elm_(dim, elm, suppress)
 }
 
 
 
-head_<- function (obj, ...) { UseMethod ("head_") }
-head_.data.cube <- function (dc, dim, n=6L, suppress) {
-    if (is.null (dc$obs[[dim]])) dc <- compute.margin_(dc, dim)
-    elm.indices <- head (dc$obs[[dim]]$elms[[dim]] [order (dc$obs[[dim]]$vars[[dc$var.names[1]]], decreasing=TRUE)], n)
-    elm.indices <- elm.indices [order (elm.indices)]
-    dc %>% select.elm.indices_(dim, elm.indices, suppress)
-}
-
-head.data.cube <- function (dc, dim, n=6L, suppress=FALSE) {
-    dim <- deparse (substitute (dim))
-    head_(dc, dim, n, suppress)
-}
-
-
-
-tail_<- function (obj, ...) { UseMethod ("tail_") }
-tail_.data.cube <- function (dc, dim, n=6L, suppress) {
-    if (is.null (dc$obs[[dim]])) dc <- compute.margin_(dc, dim)
-    elm.indices <- tail (dc$obs[[dim]]$elms[[dim]] [order (dc$obs[[dim]]$vars[[dc$var.names[1]]], decreasing=TRUE)], n)
-    elm.indices <- elm.indices [order (elm.indices)]
-    dc %>% select.elm.indices_(dim, elm.indices, suppress)
-}
-
-tail.data.cube <- function (dc, dim, n=6L, suppress=FALSE) {
-    dim <- deparse (substitute (dim))
-    tail_(dc, dim, n, suppress)
-}
-
-
 
 filter.elm <- function (obj, ...) { UseMethod ("filter.elm") }
+
+#' @method filter.elm data.cube
+#' @rdname select.elm.data.cube
 filter.elm.data.cube <- function (dc, dim, filter, suppress=FALSE) {
     dim <- deparse (substitute (dim))
     filter <- substitute (filter)
@@ -534,8 +577,10 @@ filter.elm.data.cube <- function (dc, dim, filter, suppress=FALSE) {
 }
 
 
-filter.var <- function (obj, ...) { UseMethod ("filter.var") }
-filter.var.data.cube <- function (dc, filter) {
+
+
+filter.obs <- function (obj, ...) { UseMethod ("filter.obs") }
+filter.obs.data.cube <- function (dc, filter) {
     filter <- substitute (filter)
     dc.name <- paste (dc$dim.names, collapse=".")
 
@@ -547,15 +592,25 @@ filter.var.data.cube <- function (dc, filter) {
 }
 
 
-arrange.dim_<- function (obj, ...) { UseMethod ("arrange.dim_") }
-arrange.dim_.data.cube <- function (dc, dim, decreasing) {
+
+
+arrange.elm_<- function (obj, ...) { UseMethod ("arrange.elm_") }
+arrange.elm_.data.cube <- function (dc, dim, decreasing) {
+    new.indices <- list ()
+    for (d in dim) {
+        new.indices[[d]] <- rank (dc$elm.names[[d]])
+        if (decreasing) new.indices[[d]] <- rev (new.indices[[d]])
+        dc$elm.names[[d]] <- dc$elm.names[[d]] [order (dc$elm.names[[d]])]
+    }
+
+    dp.name <- 'space'
     for (dp.name in names (dc$obs)) {
         if (dp.name == ".") next
         dim2 <- strsplit (dp.name, ".", fixed=TRUE)[[1]]
         for (d in rev (dim)) {
             if (! d %in% dim2) next
-            rank <- rank (dc$elm.names[[d]])
-            order <- order (rank [dc$obs[[dp.name]]$elms[[d]]], decreasing=decreasing)
+            dc$obs[[dp.name]]$elms[[d]] <- new.indices[[d]] [dc$obs[[dp.name]]$elms[[d]]]
+            order <- order (dc$obs[[dp.name]]$elms[[d]], decreasing=decreasing)
             dc$obs[[dp.name]]$elms <- lapply (dc$obs[[dp.name]]$elms, function (dim) dim [order])
             dc$obs[[dp.name]]$vars <- lapply (dc$obs[[dp.name]]$vars, function (dim) dim [order])
         }
@@ -564,15 +619,15 @@ arrange.dim_.data.cube <- function (dc, dim, decreasing) {
     return (dc)
 }
 
-arrange.dim <- function (obj, ...) { UseMethod ("arrange.dim") }
-arrange.dim.data.cube <- function (dc, ..., decreasing=FALSE) {
+arrange.elm <- function (obj, ...) { UseMethod ("arrange.elm") }
+arrange.elm.data.cube <- function (dc, ..., decreasing=FALSE) {
     dim <- sapply (eval (substitute (alist (...))), deparse)
-    arrange.dim_(dc, dim, decreasing)
+    arrange.elm_(dc, dim, decreasing)
 }
 
 
-arrange.var_<- function (obj, ...) { UseMethod ("arrange.var_") }
-arrange.var_.data.cube <- function (dc, var=dc$var.names[1], decreasing=TRUE) {
+arrange.obs_<- function (obj, ...) { UseMethod ("arrange.obs_") }
+arrange.obs_.data.cube <- function (dc, var=dc$var.names[1], decreasing=TRUE) {
     dc.name <- paste (dc$dim.names, collapse=".")
     order <- order (dc$obs[[dc.name]]$vars[[var]], decreasing=decreasing)
     dc$obs[[dc.name]]$elms <- lapply (dc$obs[[dc.name]]$elms, function (dim) dim [order])
@@ -581,17 +636,17 @@ arrange.var_.data.cube <- function (dc, var=dc$var.names[1], decreasing=TRUE) {
     return (dc)
 }
 
-arrange.var <- function (obj, ...) { UseMethod ("arrange.var") }
-arrange.var.data.cube <- function (dc, var=NULL, decreasing=TRUE) {
+arrange.obs <- function (obj, ...) { UseMethod ("arrange.obs") }
+arrange.obs.data.cube <- function (dc, var=NULL, decreasing=TRUE) {
     var <- deparse (substitute (var))
     if (var == "NULL") var <- dc$var.names[1]
-    arrange.var_(dc, var=var, decreasing=decreasing)
+    arrange.obs_(dc, var=var, decreasing=decreasing)
 }
 
 
 
-plot.var_<- function (obj, ...) { UseMethod ("plot.var_") }
-plot.var_.data.cube <- function (dc, var, type="col", sep.dim=NULL) {
+plot.obs_<- function (obj, ...) { UseMethod ("plot.obs_") }
+plot.obs_.data.cube <- function (dc, var, type="col", sep.dim=NULL) {
     df <- as.data.frame (dc, complete=TRUE)
     if (nrow (df) == 0) return (NULL);
 
@@ -656,20 +711,20 @@ plot.var_.data.cube <- function (dc, var, type="col", sep.dim=NULL) {
 }
 
 
-plot.var <- function (obj, ...) { UseMethod ("plot.var") }
-plot.var.data.cube <- function (dc, var=NULL, sep.dim=NULL, type="col") {
+plot.obs <- function (obj, ...) { UseMethod ("plot.obs") }
+plot.obs.data.cube <- function (dc, var=NULL, sep.dim=NULL, type="col") {
     var <- deparse (substitute (var))
     if (var == "NULL") var <- dc$var.names[1]
 
     sep.dim <- deparse (substitute (sep.dim))
     if (sep.dim == "NULL") sep.dim <- NULL
     
-    plot.var_(dc, var, type=type, sep.dim=sep.dim)
+    plot.obs_(dc, var, type=type, sep.dim=sep.dim)
 }
 
 
-biplot.var_<- function (obj, ...) { UseMethod ("biplot.var_") }
-biplot.var_.data.cube <- function (dc, dim1, dim2, var) {
+biplot.obs_<- function (obj, ...) { UseMethod ("biplot.obs_") }
+biplot.obs_.data.cube <- function (dc, dim1, dim2, var) {
     ## Get data
     df <- as.data.frame (dc)
 
@@ -707,15 +762,15 @@ biplot.var_.data.cube <- function (dc, dim1, dim2, var) {
 }
 
     
-biplot.var <- function (obj, ...) { UseMethod ("biplot.var") }
-biplot.var.data.cube <- function (dc, dim1, dim2, var=NULL) {
+biplot.obs <- function (obj, ...) { UseMethod ("biplot.obs") }
+biplot.obs.data.cube <- function (dc, dim1, dim2, var=NULL) {
     dim1 <- deparse (substitute (dim1))
     dim2 <- deparse (substitute (dim2))
 
     var <- deparse (substitute (var))
     if (var == "NULL") var <- dc$var.names[1]
 
-    biplot.var_(dc, dim1, dim2, var=var)
+    biplot.obs_(dc, dim1, dim2, var=var)
 }
 
 

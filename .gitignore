@@ -2,6 +2,7 @@
 .Rproj.user
 .Rhistory
 .RData
+.Rd2pdf*
 inst/doc
 
 # TEMPORARY FILES
@@ -9,6 +10,7 @@ inst/doc
 *.backup
 **/#*#
 **/.#*
+*.tar.gz
 
 # DATA FILES
 rsconnect
