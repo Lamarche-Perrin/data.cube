@@ -33,6 +33,7 @@ fluidPage (
                                 radioButtons ("dataset", label=h4("Select dataset"),
                                               choices=c(
                                                   "Guardian Comments (2016)"="guardian.2016",
+                                                  "Geomedia Corpus (2014)"="geomedia",
                                                   "Twitter Politics (EU)"="twitter.eu",
                                                   "Twitter Politics (FR)"="twitter.fr",
                                                   "Opinion Model"="opinion.traces"#,

@@ -2,6 +2,7 @@
 .Rproj.user
 .Rhistory
 .RData
+.Rd2pdf*
 inst/doc
 
 # TEMPORARY FILES
@@ -9,11 +10,13 @@ inst/doc
 *.backup
 **/#*#
 **/.#*
+*.tar.gz
 
 # DATA FILES
 rsconnect
 data
 !data/data.cube.example.R
+!data/geomedia.csv
 !data/guardian.2016.csv
 !data/guardian.small.csv
 !data/opinion.traces.csv
