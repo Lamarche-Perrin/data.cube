@@ -30,7 +30,7 @@ fluidPage (
                 fluidRow (
                     column (3,
                             wellPanel (
-                                radioButtons ("dataset", label=h4("Select dataset"),
+                                radioButtons ("dataset", label=h4("Select datasets"),
                                               choices=c(
                                                   "Guardian Comments (2016)"="guardian.2016",
                                                   "Twitter Politics (EU)"="twitter.eu",
