@@ -1,0 +1,13 @@
+Package: data.cube
+Title: Easy Processing of Multidimensional Data
+Version: 2.0
+Authors@R: person("Robin", "Lamarche-Perrin", email = "Robin.Lamarche-Perrin@lip6.fr", role = c("aut", "cre"))
+Author: Robin Lamarche-Perrin [aut, cre]
+Maintainer: Robin Lamarche-Perrin <Robin.Lamarche-Perrin@lip6.fr>
+Description: Exploring multidimensional datasets and detecting statistical outliers within. This package defines a new data structure that can be fed with a classical data.frame. It encodes a list of numeric variables described according to several categorical dimensions. This package is mainly a tool for data exploration, allowing to have a first glance at it and to formulate research hypotheses to be later tested.
+Depends: R (>= 3.4.3)
+License: GPL-3 | file LICENSE
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 6.0.1
+

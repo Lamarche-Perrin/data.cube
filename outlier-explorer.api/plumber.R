@@ -4,7 +4,10 @@ source ('../data.cube.R')
 
 data <- data.frame()
 
-#' @post /format_comments
+#' @get /tools/ping
+ping <- function () { return ("OK!"); }
+
+#' @post /tools/format_comments
 format_comments <- function (data, param=NULL) {
     if (is.null (param)) { param <- list() }
     if (is.null (param$time)) { param$time <- list() }
@@ -56,7 +59,7 @@ format_comments <- function (data, param=NULL) {
 }
 
 
-#' @post /outliers
+#' @post /tools/outliers
 outliers <- function (data=NULL, dataset=NULL, param=NULL) {
 
     ## Load dataset
