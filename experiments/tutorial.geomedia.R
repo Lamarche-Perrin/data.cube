@@ -1,5 +1,7 @@
-rm (list = ls())
-source ("../src/data.cube.R")
+install.packages ('tidyverse')
+install.packages ('ggrepel')
+
+source ("data.cube.R")
 ## library ('data.cube')
 
 
@@ -7,7 +9,7 @@ source ("../src/data.cube.R")
 
 ## 1.1. Import dataset with 'read.csv()'
 
-df <- read.csv ("../data/geomedia.csv", stringsAsFactors = FALSE)
+df <- read.csv ("geomedia.csv", stringsAsFactors = FALSE)
 head (df)
 
 
@@ -60,16 +62,7 @@ dc %>%
 
 dc %>%
   select.dim (weeks) %>%
-  plot.obs ()
-
-p <- # Get plot and save it in variable 'p'
-  dc %>%
-  select.dim (weeks) %>%
-  plot.obs ()
-
-p + ggtitle ("Number of articles through time") # Add a title
-
-ggsave ("myplot.pdf", p) # Save plot as PDF
+  plot.var ()
 
 
 ## 2.2. Order temporal dimension with 'arrange.elm()'
@@ -77,21 +70,30 @@ ggsave ("myplot.pdf", p) # Save plot as PDF
 dc %>%
   select.dim (weeks) %>%
   arrange.elm (weeks) %>%
-  plot.obs ()
+  plot.var ()
 
 dc <- # Order temporal dimension and save result in 'dc'
   dc %>% arrange.elm (weeks)
 
 
-## 2.3. Plot variable along the temporal dimension with 'plot.obs()'
+## 2.3. Plot variable along the temporal dimension with 'plot.var()'
 
 dc %>%
   select.dim (weeks) %>%
-  plot.obs ()
+  plot.var ()
 
 dc %>%
   select.dim (weeks) %>%
-  plot.obs (type = "line")
+  plot.var (type = "line")
+
+p <- # Get plot and save it in variable 'p'
+  dc %>%
+  select.dim (weeks) %>%
+  plot.var (type = "line")
+
+p + ggtitle ("Number of articles through time") # Add a title
+
+ggsave ("myplot.pdf", p) # Save plot as PDF
 
 
 ## 2.4. Suppress elements in the data with 'remove.elm()'
@@ -106,7 +108,12 @@ rem.weeks <- # Vector of weeks to remove
 dc %>%
   select.dim (weeks) %>%
   remove.elm (weeks, rem.weeks, suppress = TRUE) %>%
-  plot.obs (type = "line")
+  plot.var (type = "line")
+
+dc %>%
+  select.dim (weeks) %>%
+  remove.elm (weeks, rem.weeks, suppress = TRUE) %>%
+  plot.var (type = "line") + expand_limits (y = 0)
 
 dc <- # Remove weeks and save results in 'dc'
   dc %>%
@@ -121,7 +128,7 @@ dc <- # Remove weeks and save results in 'dc'
 dc %>%
   select.dim (countries) %>%
   arrange.elm (countries) %>%
-  plot.obs ()
+  plot.var ()
 
 
 ## 3.2. Order by values with 'arrange.obs()'
@@ -129,7 +136,7 @@ dc %>%
 dc %>%
   select.dim (countries) %>%
   arrange.elm (countries, var = articles, decreasing = TRUE) %>%
-  plot.obs ()
+  plot.var ()
 
 dc <-
   dc %>%
@@ -143,7 +150,7 @@ G8 <- c ("USA", "JPN", "DEU", "FRA", "RUS", "GBR", "ITA", "CAN")
 dc %>%
   select.dim (countries) %>%
   select.elm (countries, elm.array = G8) %>%
-  plot.obs ()
+  plot.var ()
 
 
 ## 3.4. Select the top 20 countries with 'select.elm()'
@@ -151,7 +158,7 @@ dc %>%
 dc %>%
   select.dim (countries) %>%
   select.elm (countries, top.nb = 20, var = articles) %>%
-  plot.obs ()
+  plot.var ()
 
 
 ## 3.5. Select countries with more than 5000 articles with 'filter.elm()'
@@ -159,7 +166,7 @@ dc %>%
 dc %>%
   select.dim (countries) %>%
   select.elm (countries, filter = articles > 5000) %>%
-  plot.obs ()
+  plot.var ()
 
 
 
@@ -167,33 +174,28 @@ dc %>%
 
 ## 4.1. Prepare data.cube
 
-weeks <- elm.names (dc, weeks)
-weeks.2014 <- weeks [substring (weeks, 1, 4) == "2014"] # Select all weeks starting by '2014'
-weeks.2014
-
 dc2 <-
   dc %>%
   select.dim (weeks, countries) %>%
-  select.elm (weeks, weeks.2014) %>%
   select.elm (countries, G8) %>%
   arrange.elm (weeks, countries)
   
   
 ## 4.2. Plot countries and weeks
 
-dc2 %>% plot.obs ()
+dc2 %>% plot.var ()
 
 
 ## 4.3. Separate the 'countries' dimension
 
-dc2 %>% plot.obs (sep.dim = countries)
+dc2 %>% plot.var (sep.dim = countries)
 
-dc2 %>% plot.obs (sep.dim = countries, type = "line")
+dc2 %>% plot.var (sep.dim = countries, type = "line")
 
 
 ## 4.4. Bidimensional plot of countries and weeks
 
-dc2 %>% biplot.obs (x.dim = countries, y.dim = weeks)
+dc2 %>% biplot.var (x.dim = countries, y.dim = weeks)
 
 
 
@@ -204,111 +206,105 @@ dc2 %>% biplot.obs (x.dim = countries, y.dim = weeks)
 dc3 <-
   dc %>%
   select.dim (weeks, countries) %>%
-  select.elm (countries, c("USA","RUS","FRA","ITA","JPN")) %>%
+  select.elm (countries, c("USA","RUS","DEU","ITA","JPN")) %>%
   arrange.elm (weeks, countries)
 
 
 ## 5.2. Compute a simple model (taking into account the global popularity of countries)
 
 # Raw observations
-dc3 %>% plot.obs (sep.dim = countries, type = "line")
+dc3 %>% plot.var (sep.dim = countries, type = "line")
+
 
 # Raw model
 dc3 %>%
   compute.model () %>%
-  plot.obs (model, sep.dim = countries, type = "line")
+  plot.var (model, sep.dim = countries, type = "line")
 
 # Model taking into account 'countries' marginals
 dc3 %>%
   compute.model (countries) %>%
-  plot.obs (model, sep.dim = countries, type = "line")
+  plot.var (model, sep.dim = countries, type = "line")
 
 # Ratio between observed values and expected values
 dc3 %>%
   compute.model (countries) %>%
-  plot.obs (ratio, sep.dim = countries)
+  plot.var (ratio, sep.dim = countries)
 
 
 ## 5.3. Compute a more complete model (also taking into account the global activity through time)
 
-dc3 %>% select.dim (weeks) %>% plot.obs ()
+dc3 %>% select.dim (weeks) %>% plot.var ()
 
 dc3 %>%
   compute.model (countries, weeks) %>%
-  plot.obs (ratio, sep.dim = countries)
-
-
-## 5.4. Compute significativity of 
+  plot.var (model, sep.dim = countries, type = "line")
 
 dc3 %>%
-  compute.model (countries, weeks, deviation.type = 'poisson') %>%
-  plot.obs (deviation, sep.dim = countries)
+  compute.model (countries, weeks) %>%
+  plot.var (ratio, sep.dim = countries)
+
+
+## 5.4. Compute model's significativity
 
 dc3 %>%
-  compute.model (countries, weeks, deviation.type = 'poisson') %>%
-  plot.outlier ()
+  compute.model (countries, weeks, deviation.type = 'KLdiv') %>%
+  plot.var (deviation, sep.dim = countries)
 
+
+## 5.5. Plot outliers (countries x weeks)
+
+dc3 %>%
+  compute.model (countries, weeks, deviation.type = 'poisson', deviation.threshold = 1) %>%
+  plot.outliers ()
+
+# For the whole dataset
 dc %>%
   select.dim (countries, weeks) %>%
   compute.model (countries, weeks, deviation.type = 'poisson') %>%
-  plot.outlier ()
+  plot.outliers ()
 
+# Filtering and zooming on positive outliers
 dc %>%
   select.dim (countries, weeks) %>%
   compute.model (countries, weeks, deviation.type = 'poisson') %>%
   filter.obs (articles >= 100) %>%
   filter.obs (ratio >= 1) %>%
-  plot.outlier ()
+  plot.outliers ()
+
+# Another visualisation
+dc %>%
+  select.dim (countries, weeks) %>%
+  select.elm (countries, top.nb = 15, var = articles) %>%
+  compute.model (countries, weeks, deviation.type = 'poisson') %>%
+  biplot.var (countries, weeks, var = deviation)
+
+
+## 5.6. Plot outliers (countries x newspapers)
 
 dc %>%
   select.dim (newspapers, countries) %>%
   compute.model (countries, newspapers, deviation.type = 'poisson') %>%
-  filter.obs (articles >= 100) %>%
-  filter.obs (ratio >= 1) %>%
-  plot.outlier ()
+  plot.outliers ()
 
 dc %>%
-  select.dim (newspapers, weeks) %>%
-  compute.model (weeks, newspapers, deviation.type = 'poisson') %>%
-  filter.obs (articles >= 100) %>%
-  filter.obs (ratio >= 1) %>%
-  plot.outlier ()
+  select.dim (weeks, newspapers, countries) %>%
+  compute.model (weeks, countries, newspapers, deviation.type = 'poisson') %>%
+  plot.outliers ()
+
+dc %>%
+  select.dim (newspapers, countries) %>%
+  compute.model (countries, newspapers, deviation.type = 'poisson') %>%
+  biplot.var (newspapers, countries, deviation)
+
+
+## 5.8. Retrieve list of outliers
 
 dc %>%
   select.dim (newspapers, countries) %>%
   compute.model (countries, newspapers, deviation.type = 'poisson') %>%
   filter.obs (outlier == 1) %>%
-  arrange.obs (deviation) %>%
+  arrange.obs (deviation, decreasing=TRUE) %>%
   as.data.frame ()
 
-dc %>%
-  select.dim (newspapers, countries) %>%
-  compute.model (countries, newspapers, deviation.type = 'poisson') %>%
-  filter.obs (outlier == 1) %>%
-  arrange.obs (deviation) %>%
-  as.data.frame ()
 
-dc %>%
-  select.dim (newspapers, countries) %>%
-  select.elm (countries, top.nb = 10) %>%
-  select.elm (newspapers, top.nb = 5) %>%
-  compute.model (countries, newspapers, deviation.type = 'poisson') %>%
-  biplot.obs (newspapers, countries, deviation)
-
-elm.names (dc, weeks)
-
-dc %>%
-  select.dim (newspapers, countries) %>%
-  select.elm (countries, top.nb = 50) %>%
-  select.elm (newspapers, top.nb = 10) %>%
-  compute.model (countries, newspapers, deviation.type = 'poisson') %>%
-  biplot.obs (newspapers, countries)
-
-
-
-## Temporal outliers
-
-dc3 <-
-  dc %>%
-  select.elm (weeks, weeks.2014, suppress = TRUE) %>%
-  select.elm (countries, G8)

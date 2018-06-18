@@ -46,15 +46,15 @@ fluidPage (
                             conditionalPanel (
                                 condition="(typeof input.dataset !== 'undefined' && input.dataset.length > 0)",
                                 wellPanel (
-                                    uiOutput ("user.buttons"),
-                                    uiOutput ("user.list"),
-                                    uiOutput ("user.slider"),
-                                    uiOutput ("topic.buttons"),
-                                    uiOutput ("topic.list"), 
-                                    uiOutput ("topic.slider"),
-                                    uiOutput ("time.buttons"),
-                                    uiOutput ("time.list"),
-                                    uiOutput ("time.slider")
+                                    uiOutput ("dim1.buttons"),
+                                    uiOutput ("dim1.list"),
+                                    uiOutput ("dim1.slider"),
+                                    uiOutput ("dim2.buttons"),
+                                    uiOutput ("dim2.list"), 
+                                    uiOutput ("dim2.slider"),
+                                    uiOutput ("dim3.buttons"),
+                                    uiOutput ("dim3.list"),
+                                    uiOutput ("dim3.slider")
                                 )
                             )
                             ),
@@ -88,7 +88,7 @@ fluidPage (
                                        column (3, plotOutput (outputId="distribution.plot"))
                                    )
                                    ),
-                         tabPanel ("Outlier lists",
+                         tabPanel ("Outlier list",
                                    fluidRow (
                                        column (6,
                                                downloadButton (outputId="download.positive.outlier.list.csv", label="Download list (csv)"),

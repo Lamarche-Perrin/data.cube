@@ -1,4 +1,4 @@
-## This file is part of data.cube.
+# This file is part of data.cube.
 ##
 ## data.cube is an R package for the easy processing of multidimentional
 ## data. It has been developed by researchers of the Complex Networks team,
@@ -737,6 +737,56 @@ select.elm.data.cube <-
   }
 
 
+select.elm_ <-
+  function (obj, ...) {
+    UseMethod ("select.elm_")
+  }
+select.elm_.data.cube <-
+  function (dc,
+            dim,
+            elm.array = NULL,
+            filter = NULL,
+            top.nb = NULL,
+            bot.nb = NULL,
+            var = NULL,
+            suppress = FALSE) {
+
+    if (! is.null (elm.array)) {
+      elm.indices <-
+        seq (length (dc$elm.names[[dim]])) [dc$elm.names[[dim]] %in% elm.array]
+    } else {
+        ## else if (deparse (substitute (filter)) != "NULL") {
+        ##   filter <- substitute (filter)
+        
+        ##   if (is.null (dc$obs[[dim]]))
+        ##     dc <- compute.margin_(dc, dim)
+        
+        ##   keep <- eval (filter, dc$obs[[dim]]$vars)
+        ##   elm.indices <- dc$obs[[dim]]$elms[[dim]] [keep]
+        ## } else {
+        if (is.null (var))
+        var <- dc$var.names[1]
+      
+      if (is.null (dc$obs[[dim]]) ||
+          is.null (dc$obs[[dim]]$vars[[var]]))
+        dc <- compute.margin_(dc, dim)
+      
+      if (!is.null (top.nb))
+        elm.indices <-
+          head (dc$obs[[dim]]$elms[[dim]] [order (dc$obs[[dim]]$vars[[dc$var.names[1]]], decreasing =
+                                                    TRUE)], top.nb)
+      else if (!is.null (bot.nb))
+        elm.indices <-
+          tail (dc$obs[[dim]]$elms[[dim]] [order (dc$obs[[dim]]$vars[[dc$var.names[1]]], decreasing =
+                                                    TRUE)], bot.nb)
+      
+      elm.indices <- elm.indices [order (elm.indices)]
+    }
+    select.elm.indices_(dc, dim, elm.indices = elm.indices, suppress = suppress)
+  }
+
+
+
 remove.elm_ <- function (obj, ...) {
   UseMethod ("remove.elm_")
 }
@@ -890,29 +940,29 @@ arrange.elm.data.cube <-
   }
 
 
-# arrange.obs_<- function (obj, ...) { UseMethod ("arrange.obs_") }
-# arrange.obs_.data.cube <- function (dc, var=dc$var.names[1], decreasing=TRUE) {
-#     dc.name <- paste (dc$dim.names, collapse=".")
-#     order <- order (dc$obs[[dc.name]]$vars[[var]], decreasing=decreasing)
-#     dc$obs[[dc.name]]$elms <- lapply (dc$obs[[dc.name]]$elms, function (dim) dim [order])
-#     dc$obs[[dc.name]]$vars <- lapply (dc$obs[[dc.name]]$vars, function (dim) dim [order])
-#
-#     return (dc)
-# }
-#
-# arrange.obs <- function (obj, ...) { UseMethod ("arrange.obs") }
-# arrange.obs.data.cube <- function (dc, var=NULL, decreasing=TRUE) {
-#     var <- deparse (substitute (var))
-#     if (var == "NULL") var <- dc$var.names[1]
-#     arrange.obs_(dc, var=var, decreasing=decreasing)
-# }
+arrange.obs_<- function (obj, ...) { UseMethod ("arrange.obs_") }
+arrange.obs_.data.cube <- function (dc, var=dc$var.names[1], decreasing=TRUE) {
+    dc.name <- paste (dc$dim.names, collapse=".")
+    order <- order (dc$obs[[dc.name]]$vars[[var]], decreasing=decreasing)
+    dc$obs[[dc.name]]$elms <- lapply (dc$obs[[dc.name]]$elms, function (dim) dim [order])
+    dc$obs[[dc.name]]$vars <- lapply (dc$obs[[dc.name]]$vars, function (dim) dim [order])
 
-
-
-plot.obs_ <- function (obj, ...) {
-  UseMethod ("plot.obs_")
+    return (dc)
 }
-plot.obs_.data.cube <-
+
+arrange.obs <- function (obj, ...) { UseMethod ("arrange.obs") }
+arrange.obs.data.cube <- function (dc, var=NULL, decreasing=TRUE) {
+    var <- deparse (substitute (var))
+    if (var == "NULL") var <- dc$var.names[1]
+    arrange.obs_(dc, var=var, decreasing=decreasing)
+}
+
+
+
+plot.var_ <- function (obj, ...) {
+  UseMethod ("plot.var_")
+}
+plot.var_.data.cube <-
   function (dc,
             var,
             type = "col",
@@ -920,7 +970,6 @@ plot.obs_.data.cube <-
     df <- as.data.frame (dc, complete = TRUE)
     if (nrow (df) == 0)
       return (NULL)
-    
     
     unsep.dim <- dc$dim.names
     if (!is.null (sep.dim))
@@ -1007,10 +1056,10 @@ plot.obs_.data.cube <-
   }
 
 
-plot.obs <- function (obj, ...) {
-  UseMethod ("plot.obs")
+plot.var <- function (obj, ...) {
+  UseMethod ("plot.var")
 }
-plot.obs.data.cube <-
+plot.var.data.cube <-
   function (dc,
             var = NULL,
             sep.dim = NULL,
@@ -1023,14 +1072,14 @@ plot.obs.data.cube <-
     if (sep.dim == "NULL")
       sep.dim <- NULL
     
-    plot.obs_(dc, var, type = type, sep.dim = sep.dim)
+    plot.var_(dc, var, type = type, sep.dim = sep.dim)
   }
 
 
-biplot.obs_ <- function (obj, ...) {
-  UseMethod ("biplot.obs_")
+biplot.var_ <- function (obj, ...) {
+  UseMethod ("biplot.var_")
 }
-biplot.obs_.data.cube <- function (dc, x.dim, y.dim, var) {
+biplot.var_.data.cube <- function (dc, x.dim, y.dim, var) {
   ## Get data
   df <- as.data.frame (dc)
   
@@ -1096,10 +1145,10 @@ biplot.obs_.data.cube <- function (dc, x.dim, y.dim, var) {
 }
 
 
-biplot.obs <- function (obj, ...) {
-  UseMethod ("biplot.obs")
+biplot.var <- function (obj, ...) {
+  UseMethod ("biplot.var")
 }
-biplot.obs.data.cube <- function (dc, x.dim, y.dim, var = NULL) {
+biplot.var.data.cube <- function (dc, x.dim, y.dim, var = NULL) {
   x.dim <- deparse (substitute (x.dim))
   y.dim <- deparse (substitute (y.dim))
   
@@ -1107,15 +1156,15 @@ biplot.obs.data.cube <- function (dc, x.dim, y.dim, var = NULL) {
   if (var == "NULL")
     var <- dc$var.names[1]
   
-  biplot.obs_(dc, x.dim, y.dim, var = var)
+  biplot.var_(dc, x.dim, y.dim, var = var)
 }
 
 
 
-plot.outlier <- function (obj, ...) {
-  UseMethod ("plot.outlier")
+plot.outliers <- function (obj, ...) {
+  UseMethod ("plot.outliers")
 }
-plot.outlier.data.cube <- function (dc, labels = TRUE) {
+plot.outliers.data.cube <- function (dc, labels = TRUE) {
   dc.name <- paste (dc$dim.names, collapse = ".")
   var.name <- dc$var.names[1]
   
@@ -1290,9 +1339,9 @@ compute.model <- function (obj, ...) {
   UseMethod ("compute.model")
 }
 compute.model.data.cube <-
-  function (dc, ..., deviation.type = "ratio") {
+  function (dc, ..., deviation.type = "ratio", deviation.threshold = 3) {
     dim <- sapply (eval (substitute (alist (...))), deparse)
-    compute.model_(dc, dim, deviation.type = deviation.type)
+    compute.model_(dc, dim, deviation.type = deviation.type, deviation.threshold = deviation.threshold)
   }
 
 
@@ -1304,6 +1353,7 @@ data.summary <- function (obj, ...) {
   UseMethod ("data.summary")
 }
 data.summary.data.cube <- function (dc, data = "obs") {
+    dc.name <- paste (dc$dim.names, collapse = ".")
   summary (dc$obs[[dc.name]]$vars[[data]])
 }
 
@@ -1318,6 +1368,7 @@ data.distribution.data.cube <-
             data = "obs",
             log = "",
             threshold = NULL) {
+    dc.name <- paste (dc$dim.names, collapse = ".")
     p <-
       ggplot (as.data.frame (dc$obs[[dc.name]]$vars), aes (x = get(data))) +
       geom_histogram (
@@ -1326,9 +1377,7 @@ data.distribution.data.cube <-
         color = "black",
         fill = "blue",
         alpha = 0.3
-      ) +
-      ## stat_density (aes (y=..count..), color="black", fill="blue", alpha=0.3) +
-      theme_bw () #+ theme (text=elm_text (size=20))
+      )
     
     title <- paste ("Distribution of", data)
     
