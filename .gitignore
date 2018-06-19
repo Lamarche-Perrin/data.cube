@@ -22,4 +22,5 @@ data/*
 !data/twitter.eu.csv
 !data/twitter.fr.csv
 !data/geomedia.csv
+!data/geomedia.tutorial.csv
 

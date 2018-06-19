@@ -1,15 +1,14 @@
 install.packages ('tidyverse')
 install.packages ('ggrepel')
 
-source ("data.cube.R")
-## library ('data.cube')
+source ('../src/data.cube.R')
 
 
 ## 1. DATA PREPARATION
 
 ## 1.1. Import dataset with 'read.csv()'
 
-df <- read.csv ("geomedia.csv", stringsAsFactors = FALSE)
+df <- read.csv ('../data/geomedia.tutorial.csv', stringsAsFactors = FALSE)
 head (df)
 
 
@@ -84,36 +83,36 @@ dc %>%
 
 dc %>%
   select.dim (weeks) %>%
-  plot.var (type = "line")
+  plot.var (type = 'line')
 
 p <- # Get plot and save it in variable 'p'
   dc %>%
   select.dim (weeks) %>%
-  plot.var (type = "line")
+  plot.var (type = 'line')
 
-p + ggtitle ("Number of articles through time") # Add a title
+p + ggtitle ('Number of articles through time') # Add a title
 
-ggsave ("myplot.pdf", p) # Save plot as PDF
+ggsave ('myplot.pdf', p) # Save plot as PDF
 
 
 ## 2.4. Suppress elements in the data with 'remove.elm()'
 
 rem.weeks <- # Vector of weeks to remove
-  c ("2013-12-30",
-     "2014-06-16",
-     "2014-09-08",
-     "2015-01-19",
-     "2015-06-29")
+  c ('2013-12-30',
+     '2014-06-16',
+     '2014-09-08',
+     '2015-01-19',
+     '2015-06-29')
 
 dc %>%
   select.dim (weeks) %>%
   remove.elm (weeks, rem.weeks, suppress = TRUE) %>%
-  plot.var (type = "line")
+  plot.var (type = 'line')
 
 dc %>%
   select.dim (weeks) %>%
   remove.elm (weeks, rem.weeks, suppress = TRUE) %>%
-  plot.var (type = "line") + expand_limits (y = 0)
+  plot.var (type = 'line') + expand_limits (y = 0)
 
 dc <- # Remove weeks and save results in 'dc'
   dc %>%
@@ -145,7 +144,7 @@ dc <-
 
 ## 3.3. Select a subset of particular countries with 'select.elm()'
 
-G8 <- c ("USA", "JPN", "DEU", "FRA", "RUS", "GBR", "ITA", "CAN")
+G8 <- c ('USA', 'JPN', 'DEU', 'FRA', 'RUS', 'GBR', 'ITA', 'CAN')
 
 dc %>%
   select.dim (countries) %>%
@@ -190,7 +189,7 @@ dc2 %>% plot.var ()
 
 dc2 %>% plot.var (sep.dim = countries)
 
-dc2 %>% plot.var (sep.dim = countries, type = "line")
+dc2 %>% plot.var (sep.dim = countries, type = 'line')
 
 
 ## 4.4. Bidimensional plot of countries and weeks
@@ -206,25 +205,25 @@ dc2 %>% biplot.var (x.dim = countries, y.dim = weeks)
 dc3 <-
   dc %>%
   select.dim (weeks, countries) %>%
-  select.elm (countries, c("USA","RUS","DEU","ITA","JPN")) %>%
+  select.elm (countries, c('USA','RUS','DEU','ITA','JPN')) %>%
   arrange.elm (weeks, countries)
 
 
 ## 5.2. Compute a simple model (taking into account the global popularity of countries)
 
 # Raw observations
-dc3 %>% plot.var (sep.dim = countries, type = "line")
+dc3 %>% plot.var (sep.dim = countries, type = 'line')
 
 
 # Raw model
 dc3 %>%
   compute.model () %>%
-  plot.var (model, sep.dim = countries, type = "line")
+  plot.var (model, sep.dim = countries, type = 'line')
 
 # Model taking into account 'countries' marginals
 dc3 %>%
   compute.model (countries) %>%
-  plot.var (model, sep.dim = countries, type = "line")
+  plot.var (model, sep.dim = countries, type = 'line')
 
 # Ratio between observed values and expected values
 dc3 %>%
@@ -238,7 +237,7 @@ dc3 %>% select.dim (weeks) %>% plot.var ()
 
 dc3 %>%
   compute.model (countries, weeks) %>%
-  plot.var (model, sep.dim = countries, type = "line")
+  plot.var (model, sep.dim = countries, type = 'line')
 
 dc3 %>%
   compute.model (countries, weeks) %>%
@@ -286,16 +285,6 @@ dc %>%
   select.dim (newspapers, countries) %>%
   compute.model (countries, newspapers, deviation.type = 'poisson') %>%
   plot.outliers ()
-
-dc %>%
-  select.dim (weeks, newspapers, countries) %>%
-  compute.model (weeks, countries, newspapers, deviation.type = 'poisson') %>%
-  plot.outliers ()
-
-dc %>%
-  select.dim (newspapers, countries) %>%
-  compute.model (countries, newspapers, deviation.type = 'poisson') %>%
-  biplot.var (newspapers, countries, deviation)
 
 
 ## 5.8. Retrieve list of outliers
