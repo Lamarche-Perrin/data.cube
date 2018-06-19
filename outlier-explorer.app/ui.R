@@ -32,11 +32,11 @@ fluidPage (
                             wellPanel (
                                 radioButtons ("dataset", label=h4("Select dataset"),
                                               choices=c(
-                                                  "Guardian Comments (2016)"="guardian.2016",
-                                                  "Geomedia Data (2014-2015)"="geomedia",
-                                                  "Twitter Politics (EU)"="twitter.eu",
-                                                  "Twitter Politics (FR)"="twitter.fr",
-                                                  "Opinion Model"="opinion.traces"#,
+                                                  "Geomedia corpus (2014-2015)"="geomedia",
+                                                  "Guardian comments (2016)"="guardian.2016",
+                                                  "Twitter politics (EU)"="twitter.eu",
+                                                  "Twitter politics (FR)"="twitter.fr",
+                                                  "Opinion model"="opinion.traces"#,
                                                   #"IP Traffic MAWI"="mawi.sec"
                                               ), selected=character(0))
                             ),

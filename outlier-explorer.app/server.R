@@ -30,6 +30,7 @@ source ('../src/data.cube.R')
 options (rgl.useNULL = TRUE)
 
 app.title <- 'The Outlier Explorer'
+time.names <- c ('timestep', 'time', 'week')
 
 function (input, output, session) {
 
@@ -37,20 +38,29 @@ function (input, output, session) {
 
     dim.str <- function (dim.name, plural = FALSE) {
         if (dim.name == 'user') {
-            str <- 'User'
+            str <- 'user'
+            if (plural) { str <- paste (str, 's', sep='') }
+        } else if (dim.name == 'agent') {
+            str <- 'agent'
             if (plural) { str <- paste (str, 's', sep='') }
         } else if (dim.name == 'topic') {
-            str <- 'Topic'
+            str <- 'topic'
+           if (plural) { str <- paste (str, 's', sep='') } 
+        } else if (dim.name == 'hashtag') {
+            str <- 'hashtag'
            if (plural) { str <- paste (str, 's', sep='') }
-        } else if (dim.name == 'time' || dim.name == 'week') {
-            str <- 'Week'
+        } else if (dim.name == 'timestep') {
+            str <- 'timestep'
+            if (plural) { str <- paste (str, 's', sep='') }
+        } else if (dim.name == 'week') {
+            str <- 'week'
             if (plural) { str <- paste (str, 's', sep='') }
         }  else if (dim.name == 'media') {
-            str <- 'Newspaper'
+            str <- 'newspaper'
             if (plural) { str <- paste (str, 's', sep='') }
         } else if (dim.name == 'country') {
-            str <- 'Country'
-            if (plural) { str <- "Countries" }
+            str <- 'country'
+            if (plural) { str <- "countries" }
         } else {
             str <- dim.name
         }
@@ -202,9 +212,10 @@ function (input, output, session) {
     ## DIMENSION SELECTION
     dc.agg <- reactive ({
         if (is.null (input$dataset)) { return (NULL) }
-        
         dc.agg <- dc()
 
+        if (is.null (input$dim1.selection)) { return (dc.agg) }
+        
         cat (file = stderr(), "NEW SELECTION\n")
 
         if (input$dim1.selection == 'one') {
@@ -261,6 +272,12 @@ function (input, output, session) {
 
         dc.dev <- dc.agg()
 
+        if (is.null (input$dim1.selection)) { return (dc.dev) }
+
+        if (dc.dev$dim.nb == 0) { return (dc.dev) }
+        dc.name <- paste (dc.dev$dim.names, collapse = ".")
+        if (dc.dev$obs[[dc.name]]$vars[[dc.dev$var.names[1]]]) { return (dc.dev) }
+
         cat (file = stderr(), "NEW NORMALISATION\n")
 
         if (dc.dev$dim.nb > 0) { 
@@ -288,6 +305,8 @@ function (input, output, session) {
         if (is.null (input$dataset)) { return (NULL) }
         if (dc.dev()$dim.nb == 0) { return (dc.dev()) }
         dc.out <- dc.dev()
+
+        if (is.null (input$dim1.selection)) { return (dc.out) }
 
         dc.name <- paste (dc.out$dim.names, collapse = ".")
         keep <- dc.out$obs[[dc.name]]$vars[[dc.out$var.names[1]]] >= input$min.obs
@@ -326,10 +345,10 @@ function (input, output, session) {
         if (input$dim3.selection %in% c ('some','all')) { dims <- append (dims, dc()$dim.names[3]) }
         if (length (dims) > 2) { return (NULL) }
 
-        dc.name <- paste (dc.out()$dim.names, collapse='.')
-        if (dc.out()$dim.nb == 0 || length (dc.out()$obs[[dc.name]]$vars[[dc.out()$var.names[1]]]) == 0) { return (NULL) }
+        dc.name <- paste (dc.dev()$dim.names, collapse='.')
+        if (dc.dev()$dim.nb == 0 || length (dc.dev()$obs[[dc.name]]$vars[[dc.dev()$var.names[1]]]) == 0) { return (NULL) }
         
-        dc.plot <- dc.out()
+        dc.plot <- dc.dev()
 
         ## Set main and sep dims
         main.dim <- dims[1]
@@ -343,21 +362,32 @@ function (input, output, session) {
             }
         }
 
-        ## Set type of plot
-        type <- 'col'
-        ## if (main.dim %in% c ('time', 'week')) { type <- 'line' }
-        
-        ## Arrange elements
-        if (! main.dim %in% c ('time', 'week')) {
-            dc.plot <- arrange.elm_(dc.plot, main.dim, var = dc.plot$var.names[1], decreasing = TRUE)
-        }
-
         ## Set ploted variable
         var <- dc.plot$var.names[1]
         if (input$dim1.selection %in% c ('all','some','one') && input$dim1.normalisation
             || input$dim2.selection %in% c ('all','some','one') && input$dim2.normalisation
             || input$dim3.selection %in% c ('all','some','one') && input$dim3.normalisation) {
             if (input$deviation.type == 'ratio') { var <- 'ratio' } else { var <- 'deviation' }
+        }
+
+        ## Set type of plot
+        type <- 'col'
+        if (var == dc.plot$var.names[1] && main.dim %in% time.names) { type <- 'line' }
+        
+        ## Arrange elements        
+        if (! is.null (sep.dim) && ! sep.dim %in% time.names) {
+            dc.plot <- arrange.elm_(dc.plot, sep.dim, var = dc.plot$var.names[1], decreasing = TRUE)
+        }
+        if (! main.dim %in% time.names) {
+            dc.plot <- arrange.elm_(dc.plot, main.dim, var = dc.plot$var.names[1], decreasing = TRUE)
+        }
+
+        if (type == 'line') {
+            if (is.null (sep.dim)) {
+                dc.plot <- arrange.elm_(dc.plot, dim = c (main.dim))
+            } else {
+                 dc.plot <- arrange.elm_(dc.plot, dim = c (main.dim, sep.dim))
+            }
         }
 
         ## Get plot
@@ -413,10 +443,10 @@ function (input, output, session) {
     output$distribution.plot <- renderPlot ({
         if (is.null (input$dataset)) { return (NULL) }
 
-        dc.name <- paste (dc.out()$dim.names, collapse='.')
-        if (dc.out()$dim.nb == 0 || length (dc.out()$obs[[dc.name]]$vars[[dc.out()$var.names[1]]]) == 0) { return (NULL) }
+        dc.name <- paste (dc.dev()$dim.names, collapse='.')
+        if (dc.dev()$dim.nb == 0 || length (dc.dev()$obs[[dc.name]]$vars[[dc.dev()$var.names[1]]]) == 0) { return (NULL) }
 
-        dc.plot <- dc.out()
+        dc.plot <- dc.dev()
 
         plot <- data.distribution (dc.plot, data = 'deviation', threshold = input$outlier.threshold)
         plot <- plot + theme (text = element_text (size = 20))
@@ -428,9 +458,9 @@ function (input, output, session) {
     ## OUTLIER LISTS
     positive.outlier.list <- reactive ({
         if (is.null (input$dataset)) { return (NULL) }
-        if (dc.out()$dim.nb == 0) { return (NULL) }
+        if (dc.dev()$dim.nb == 0) { return (NULL) }
 
-        df <- as.data.frame (dc.out())
+        df <- as.data.frame (dc.dev())
         df <- df [df$outlier == 1, ]
         df <- df [order (-df$deviation), ]
         df$outlier <- NULL
@@ -453,9 +483,9 @@ function (input, output, session) {
 
     negative.outlier.list <- reactive ({
         if (is.null (input$dataset)) { return (NULL) }
-        if (dc.out()$dim.nb == 0) { return (NULL) }
+        if (dc.dev()$dim.nb == 0) { return (NULL) }
 
-        df <- as.data.frame (dc.out())
+        df <- as.data.frame (dc.dev())
         df <- df [df$outlier == -1, ]
         df <- df [order (df$deviation), ]
         df$outlier <- NULL
