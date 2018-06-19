@@ -183,7 +183,7 @@ function (input, output, session) {
                 checkboxInput (
                     "outlier.labels",
                     label = "Display outlier labels",
-                    value = FALSE
+                    value = TRUE
                 )
             )
         })
@@ -276,7 +276,7 @@ function (input, output, session) {
 
         if (dc.dev$dim.nb == 0) { return (dc.dev) }
         dc.name <- paste (dc.dev$dim.names, collapse = ".")
-        if (dc.dev$obs[[dc.name]]$vars[[dc.dev$var.names[1]]]) { return (dc.dev) }
+        if (length (dc.dev$obs[[dc.name]]$vars[[dc.dev$var.names[1]]]) <= 1) { return (dc.dev) }
 
         cat (file = stderr(), "NEW NORMALISATION\n")
 
@@ -419,8 +419,9 @@ function (input, output, session) {
 
         dc.plot <- dc.out()
 
-        labels <- input$outlier.labels && sum (dc.plot$obs[[dc.name]]$vars[['outlier']] != 0) <= 100
-        plot <- plot.outliers (dc.plot, labels = labels)
+        labels <- input$outlier.labels
+        repel.labels <- (sum (dc.plot$obs[[dc.name]]$vars[['outlier']] != 0) <= 200)
+        plot <- plot.outliers (dc.plot, labels = labels, repel.labels = repel.labels)
         plot <- plot + theme (text = element_text (size = 20))
 
         return (plot)

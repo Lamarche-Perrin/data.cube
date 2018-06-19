@@ -1149,7 +1149,7 @@ biplot.var.data.cube <- function (dc, x.dim, y.dim, var = NULL) {
 plot.outliers <- function (obj, ...) {
     UseMethod ("plot.outliers")
 }
-plot.outliers.data.cube <- function (dc, labels = TRUE) {
+plot.outliers.data.cube <- function (dc, labels = TRUE, repel.labels = TRUE) {
     dc.name <- paste (dc$dim.names, collapse = ".")
     var.name <- dc$var.names[1]
     
@@ -1198,14 +1198,22 @@ plot.outliers.data.cube <- function (dc, labels = TRUE) {
         p <- p + labs (subtitle = paste (title1, "=", title2))
     }
     
-    if (labels)
-        p <-
-            p + geom_text_repel (data = df [df$outlier != 0, ], aes (
-                                                                    x = get (var.name),
-                                                                    y = ratio,
-                                                                    label = label
-                                                                ))
-    
+    if (labels) {
+        if (repel.labels) {
+            p <- p + geom_text_repel (data = df [df$outlier != 0, ], aes (
+                                                                         x = get (var.name),
+                                                                         y = ratio,
+                                                                         label = label
+                                                                     ))
+        } else {
+            p <- p + geom_text (data = df [df$outlier != 0, ], aes (
+                                                                   x = get (var.name),
+                                                                   y = ratio,
+                                                                   label = label
+                                                               ))
+        }
+    }
+            
     return (p)
 }
 
