@@ -409,6 +409,58 @@ function (input, output, session) {
         content = function (filename) { ggsave (filename, plot=data.plot(), device='png') } 
     )
 
+
+
+    ## DATA BIPLOT
+    data.biplot <- reactive ({
+        if (is.null (input$dataset)) { return (NULL) }
+
+        dims <- c()
+        if (input$dim1.selection %in% c ('some','all')) { dims <- append (dims, dc()$dim.names[1]) }
+        if (input$dim2.selection %in% c ('some','all')) { dims <- append (dims, dc()$dim.names[2]) }
+        if (input$dim3.selection %in% c ('some','all')) { dims <- append (dims, dc()$dim.names[3]) }
+        if (length (dims) != 2) { return (NULL) }
+
+        dc.name <- paste (dc.dev()$dim.names, collapse='.')
+        if (dc.dev()$dim.nb == 0 || length (dc.dev()$obs[[dc.name]]$vars[[dc.dev()$var.names[1]]]) == 0) { return (NULL) }
+        
+        dc.plot <- dc.dev()
+
+        ## Set 1st and 2nd dims
+        first.dim <- dims[1]
+        second.dim <- dims[2]
+        if (length (dc.plot$elm.names[[dims[1]]]) > length (dc.plot$elm.names[[dims[2]]])) {
+            first.dim <- dims[2]
+            second.dim <- dims[1]
+        }
+
+        ## Set ploted variable
+        var <- dc.plot$var.names[1]
+        if (input$dim1.selection %in% c ('all','some','one') && input$dim1.normalisation
+            || input$dim2.selection %in% c ('all','some','one') && input$dim2.normalisation
+            || input$dim3.selection %in% c ('all','some','one') && input$dim3.normalisation) {
+            if (input$deviation.type == 'ratio') { var <- 'ratio' } else { var <- 'deviation' }
+        }
+
+        ## Get plot
+        plot <- biplot.var_(dc.plot, first.dim, second.dim, var = var)
+        plot <- plot + theme (text = element_text (size = 20))
+
+        return (plot)
+    })
+
+    output$data.biplot <- renderPlot ({ data.biplot() }, height=900)
+    
+    output$download.data.biplot.pdf <- downloadHandler (
+        filename = function () { "data.biplot.pdf" },
+        content = function (filename) { ggsave (filename, plot=data.biplot(), device='pdf') } 
+    )
+
+    output$download.data.biplot.png <- downloadHandler (
+        filename = function () { "data.biplot.png" },
+        content = function (filename) { ggsave (filename, plot=data.biplot(), device='png') } 
+    )
+
     
     ## OUTLIER PLOT
     outlier.plot <- reactive ({
