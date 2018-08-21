@@ -100,7 +100,7 @@ function (input, output, session) {
         output$dim3.buttons <- dim.buttons (3, dc$dim.names[3], paste ('Select', dim.str (dc$dim.names[3], TRUE)))
         
         ## Selection list
-        head.selection <- 1000
+        head.selection <- 10000
 
         dim.list <- function (num, dim, order = 'value') {
             dim.order <- 1:min(dc$elm.nb[[dim]], head.selection)
