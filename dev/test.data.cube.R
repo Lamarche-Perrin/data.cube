@@ -3,51 +3,75 @@ rm (list = ls())
 source ('../src/data.cube.R')
 
 ## Import dataset
-df.123 <- read.csv ('../unit.test/example.dim1.dim2.dim3.csv', stringsAsFactors=FALSE)
-df.12 <- read.csv ('../unit.test/example.dim1.dim2.csv', stringsAsFactors=FALSE)
-## df.23 <- read.csv ('../unit.test/example.dim2.dim3.csv', stringsAsFactors=FALSE)
-df.1 <- read.csv ('../unit.test/example.dim1.csv', stringsAsFactors=FALSE)
-## df.2 <- read.csv ('../unit.test/example.dim2.csv', stringsAsFactors=FALSE)
+df.123 <- read.csv ('../test/example.dim1.dim2.dim3.csv', stringsAsFactors=FALSE)
+df.12 <- read.csv ('../test/example.dim1.dim2.csv', stringsAsFactors=FALSE)
+df.23 <- read.csv ('../test/example.dim2.dim3.csv', stringsAsFactors=FALSE)
+df.1 <- read.csv ('../test/example.dim1.csv', stringsAsFactors=FALSE)
+df.2 <- read.csv ('../test/example.dim2.csv', stringsAsFactors=FALSE)
 
 head (df.123)
 head (df.12)
-## head (df.23)
+head (df.23)
 head (df.1)
-## head (df.2)
+head (df.2)
 
 
 
 ## Create data.cube
 str (as.data.cube (
     df.123,
-    list (c=dim3, a=dim1, b=dim2),
-    list (v1=var1, v2=var2)
+    list (c = dim3, a = dim1, b = dim2),
+    list (v1 = var1, v2 = var2)
 ))
 
 dc <- merge (
     as.data.cube (
         df.123,
-        list (c=dim3, a=dim1, b=dim2),
-        list (v1=var1, v2=var2)
+        list (c = dim3, a = dim1, b = dim2),
+        list (v1 = var1, v2 = var2)
     ),
     as.data.cube (
         df.12,
-        list (b=dim2, a=dim1),
-        list (v3=var3)
+        list (b = dim2, a = dim1),
+        list (v3 = var3)
+    ),
+    as.data.cube (
+        df.23,
+        list (b = dim2, c = dim3),
+        list (v4 = var4)
     ),
     as.data.cube (
         df.1,
-        list (a=dim1),
-        list (v6=var6, v7=var7)
+        list (a = dim1),
+        list (v5 = var5, v6 = var6, v7 = var7)
+    ),
+    as.data.cube (
+        df.2,
+        list (b = dim2),
+        list (v8 = var8)
     )
 )
 
-str(dc)
+str (dc)
 
+source ('../src/data.cube.R')
 is.data.cube (dc)
 as.data.frame (dc)
 as.data.frame (dc, complete = TRUE)
-as.data.frame (dc, c, b, a)
+as.data.frame (dc, dim.names = list (c, b, a))
+as.data.frame (dc, dim.names = list (dim3 = c, b, dim1 = a))
+as.data.frame (dc, dim.names = list (c, b, a), var.names = list (v2))
+as.data.frame (dc, dim.names = list (c, b, a), var.names = list (v = v2))
+as.data.frame (dc, list (b, c))
+as.data.frame (dc, list (b, c), complete = TRUE)
+as.data.frame (dc, list (a, b))
+as.data.frame (dc, list (a, b), complete = TRUE)
+as.data.frame (dc, list (a, c))
+as.data.frame (dc, list (a, c), complete = TRUE)
+as.data.frame (dc, list (a))
+as.data.frame (dc, a)
+as.data.frame (dc, a, complete = TRUE)
+
 
 
 ## Basic properties
@@ -70,17 +94,31 @@ var.nb (dc, a, b)
 
 ## Compute margins
 
-as.data.frame (compute.margin (dc, v1, b, a), b, a)
-as.data.frame (compute.margin (dc, v1, a), a)
-as.data.frame (compute.margin (dc, v3, a), a)
-
-
-        
-dc %>% as.data.frame (dim.names = a, )
+source ('../src/data.cube.R')
 
 dc %>%
-  select.dim (weeks) %>%
-  plot.obs ()
+    compute.var (list (b, a), v1) %>%
+    as.data.frame (list (b, a))
+
+dc %>%
+    compute.var (a, list (v1)) %>%
+    as.data.frame (a)
+
+dc %>%
+    compute.var (a, list (v3, v1)) %>%
+    as.data.frame (a)
+
+dc %>%
+    compute.var (a) %>%
+    as.data.frame (a)
+
+dc %>%
+    select.dim (weeks) %>%
+    str ()
+
+dc %>%
+    select.dim (weeks) %>%
+    plot.obs ()
 
 p <- # Get plot and save it in variable 'p'
   dc %>%

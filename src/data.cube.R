@@ -29,22 +29,15 @@ library ("ggrepel")
 
 as.data.cube_ <- function (obj, ...) UseMethod ("as.data.cube_")
 as.data.cube_.data.frame <-
-    function (df, dim.names, var.names) {
+    function (df,
+              dim.names,
+              var.names) {
+        
         ## Rename dims and vars
-        if (is.null (names (dim.names))) {
-            names (dim.names) <- dim.names
-        } else {
-            names (dim.names) <-
-                ifelse (names (dim.names) == "", unlist (dim.names), names (dim.names))
-        }
+        if (is.null (names (dim.names))) { names (dim.names) <- dim.names } else { names (dim.names) [names (dim.names) == ""] <- dim.names [names (dim.names) == ""] }
         dim.names <- unlist (dim.names)
         
-        if (is.null (names (var.names))) {
-            names (var.names) <- var.names
-        } else {
-            names (var.names) <-
-                ifelse (names (var.names) == "", unlist (var.names), names (var.names))
-        }
+        if (is.null (names (var.names))) { names (var.names) <- var.names } else { names (var.names) [names (var.names) == ""] <- var.names [names (var.names) == ""] }
         var.names <- unlist (var.names)
         
         ## TODO: aggregate data.frame if needed
@@ -67,7 +60,7 @@ as.data.cube_.data.frame <-
         dc$var.nb <- length (var.names)
         dc$var.names <- names (var.names)
         dc$var.dim.names <- rep (list (dc$dim.names), dc$var.nb)
-                
+        
         dc$var.NA <- lapply (df [, var.names, drop = FALSE], function (list) ifelse (class (list) %in% c ("integer", "numeric"), 0, NA))
         dc$var.FUN <- lapply (df [, var.names, drop = FALSE], function (list) ifelse (class (list) %in% c ("integer", "numeric"), sum, function (...) paste (..., collapse = ","))) ## TODO: simpler form?
 
@@ -104,10 +97,10 @@ as.data.cube_.data.frame <-
 as.data.cube <- function (obj, ...) UseMethod ("as.data.cube")
 as.data.cube.data.frame <- function (df, dim.names, var.names) {
     dim.names <- lapply (substitute (dim.names), deparse)
-    dim.names <- unlist (dim.names) [2:length (dim.names)] ## TODO: if only one dim
+    if (length (dim.names) == 1) { dim.names <- unlist (dim.names) } else { dim.names <- unlist (dim.names) [2:length (dim.names)] }
     
     var.names <- lapply (substitute (var.names), deparse)
-    var.names <- unlist (var.names) [2:length (var.names)] ## TODO: if only one var
+    if (length (var.names) == 1) { var.names <- unlist (var.names) } else { var.names <- unlist (var.names) [2:length (var.names)] }
     
     as.data.cube_(df, dim.names, var.names)
 }
@@ -156,36 +149,124 @@ is.data.cube <- function (obj) {
 }
 
 
+
+compute.var_ <-
+    function (obj, ...) {
+        UseMethod ("compute.var_")
+    }
+
+compute.var_.data.cube <-
+    function (dc,
+              dim.names,
+              var.names = NULL) {
+
+        if (is.null (var.names)) {
+            var.names <- names (dc$var.dim.names) [unlist (lapply (dc$var.dim.names, function (var) all (dim.names %in% var) & length (dim.names) < length (var)))]
+        }
+        
+        for (var.name in var.names) {
+            ## Get data.plane names
+            dp.dim.names <- dc$var.dim.names[[var.name]]
+            dp.name <- paste (dp.dim.names, collapse = ".")
+            new.dp.name <- paste (dc$dim.names [dc$dim.names %in% dim.names], collapse = ".")
+
+            ## Aggregate and merge data
+            agg <- aggregate (
+                list (var.name = dc$dp[[dp.name]]$vars[[var.name]]),
+                by = dc$dp[[dp.name]]$elms[dim.names],
+                FUN = dc$var.FUN[[var.name]]
+            )
+            names (agg) [names (agg) == "var.name"] <- var.name
+
+            agg <- merge (cbind (as.data.frame (dc$dp[[new.dp.name]]$elms), as.data.frame (dc$dp[[new.dp.name]]$vars)), agg, by = dim.names, all = TRUE)
+
+            ## Store data
+            dc$dp[[new.dp.name]]$elms <- as.list (agg [, dim.names, drop = FALSE])
+            dc$dp[[new.dp.name]]$vars <- as.list (agg [, ! names (agg) %in% dim.names, drop = FALSE])
+        }
+        
+        ## Replace NA values that appeared
+        for (var.name in names (dc$dp[[new.dp.name]]$vars)) {
+            dc$dp[[new.dp.name]]$vars[[var.name]] [is.na (dc$dp[[new.dp.name]]$vars[[var.name]])] <- dc$var.NA[[var.name]]
+        }
+        
+        return (dc)
+    }
+
+
+compute.var <-
+    function (obj, ...) {
+        UseMethod ("compute.var")
+    }
+
+compute.var.data.cube <-
+    function (dc,
+              dim.names,
+              var.names = NULL,
+              recursive = FALSE) {
+
+        dim.names <- lapply (substitute (dim.names), deparse)
+        if (length (dim.names) == 1) { dim.names <- unlist (dim.names) } else { dim.names <- unlist (dim.names) [2:length (dim.names)] }
+        
+        var.names <- lapply (substitute (var.names), deparse)
+        if (length (var.names) == 1) { var.names <- unlist (var.names) } else { var.names <- unlist (var.names) [2:length (var.names)] }
+        
+        compute.var_(dc, dim.names, var.names)
+    }
+
+
+
 as.data.frame_ <- function (obj, ...) UseMethod ("as.data.frame_")
 as.data.frame_.data.cube <-
     function (dc,
-              dim.names,
+              dim.names = NULL,
+              var.names = NULL,
               complete = FALSE) {
-        dim.names <- unlist (dim.names)
+
+        ## Get parameters
+        if (is.null (dim.names)) { dim.names <- dc$dim.names } else { dim.names <- unlist (dim.names) }
+        if (is.null (names (dim.names))) { names (dim.names) <- dim.names } else { names (dim.names) [names (dim.names) == ""] <- dim.names [names (dim.names) == ""] }
+
         dp.name <- paste (dc$dim.names [dc$dim.names %in% dim.names], collapse = ".")
-        var.names <- names (dc$dp[[dp.name]]$vars)
 
-        df <- as.data.frame (cbind (as.data.frame (dc$dp[[dp.name]]$elms), as.data.frame (dc$dp[[dp.name]]$vars)))
+        if (is.null (var.names)) { var.names <- names (dc$dp[[dp.name]]$vars) } else { var.names <- unlist (var.names) }
+        if (is.null (names (var.names))) { names (var.names) <- var.names } else { names (var.names) [names (var.names) == ""] <- var.names [names (var.names) == ""] }
 
-        if (complete) {
-            ## TODO: complete wrt dc$elm.names
-            df$row <- 1:nrow(df)
-            fill <- as.list (sapply (dc$var.names, function (v)
-                0))
-            fill$row <- nrow(df) + 1
-            df <-
-                as.data.frame (complete_(df, cols = dc$dim.names, fill = fill))
-            df <- df [order (df$row), ]
-            df$row <- NULL
+        ## Build data.frame
+        if (is.null (dc$dp[[dp.name]])) {
+            df <- data.frame ()
+            for (dim.name in dim.names) { df[[dim.name]] <- character (0) }
+        } else {
+            df <- as.data.frame (cbind (as.data.frame (dc$dp[[dp.name]]$elms), as.data.frame (dc$dp[[dp.name]]$vars)))
         }
 
-        df <- df [, append (dim.names, var.names)]
+        ## Select only interesting columns
+        df <- df [, append (unlist (dim.names), unlist (var.names))]
+
+        ## Replace element indices by element names
         if (length (dim.names) > 0) {
             dummy <-
                 lapply (dim.names, function (d) {
-                    return (df[[d]] <<- dc$elm.names[[d]][df[[d]]])
+                    return (df[[d]] <<- factor (dc$elm.names[[d]][df[[d]]], levels = dc$elm.names[[d]]))
                 })
         }
+
+        ## Complete empty values
+        if (complete) {
+            ## TODO: do not disturb row order when completing?
+            ##df$row <- 1:nrow(df)
+            fill <- as.list (sapply (var.names, function (var) dc$var.NA[[var]]))
+            fill$row <- nrow(df) + 1
+            df <- as.data.frame (complete_(df, cols = dim.names, fill = fill))
+            ##df <- df [order (df$row), ]
+            ##df$row <- NULL
+        }
+
+        ## Rename columns
+        names (df) [names (df) %in% dim.names] <- names (dim.names)
+        names (df) [names (df) %in% var.names] <- names (var.names)
+
+        ## Return data.frame
         if (length (df) == 1) {
             return (df[, 1])
         } else {
@@ -193,11 +274,20 @@ as.data.frame_.data.cube <-
         }
     }
 
+
 as.data.frame.data.cube <-
-    function (dc, ..., complete = FALSE) {
-        dim.names <- sapply (eval (substitute (alist (...))), deparse)
-        if (length (dim.names) == 0) { dim.names <- dc$dim.names }
-        as.data.frame_(dc, dim.names, complete = complete)
+    function (dc,
+              dim.names = NULL,
+              var.names = NULL,
+              complete = FALSE) {
+
+        dim.names <- lapply (substitute (dim.names), deparse)
+        if (length (dim.names) == 1) { dim.names <- unlist (dim.names) } else { dim.names <- unlist (dim.names) [2:length (dim.names)] }
+        
+        var.names <- lapply (substitute (var.names), deparse)
+        if (length (var.names) == 1) { var.names <- unlist (var.names) } else { var.names <- unlist (var.names) [2:length (var.names)] }
+        
+        as.data.frame_(dc, dim.names = dim.names, var.names = var.names, complete = complete)
     }
 
 
@@ -344,10 +434,10 @@ summary.data.cube <- function (dc) {
         sep = ""
     )
     
-    for (var in dc$var.names) {
-        cat ("-> '", var, "' variable:\n", sep = "")
-        cat (" - total: ", dc$dp[["."]]$vars[[var]], "\n", sep = "")
-        dp.nb <- length (dc$dp[[dc.name]]$vars[[var]])
+    for (var.name in dc$var.names) {
+        cat ("-> '", var.name, "' variable:\n", sep = "")
+        cat (" - total: ", dc$dp[["."]]$vars[[var.name]], "\n", sep = "")
+        dp.nb <- length (dc$dp[[dc.name]]$vars[[var.name]])
         cat (
             " - divided into ",
             dp.nb,
@@ -367,7 +457,7 @@ summary.data.cube <- function (dc) {
             ")\n",
             sep = ""
         )
-        print (summary (dc$dp[[dc.name]]$vars[[var]]))
+        print (summary (dc$dp[[dc.name]]$vars[[var.name]]))
         cat ("\n")
     }
     
@@ -396,9 +486,9 @@ summary.data.cube <- function (dc) {
              "\n",
              sep = "")
         dp.name <- dim
-        for (var in names (dc$dp[[dp.name]]$vars)) {
-            cat (" - '", var, "' variable:\n", sep = "")
-            print (summary (dc$dp[[dp.name]]$vars[[var]]))
+        for (var.name in names (dc$dp[[dp.name]]$vars)) {
+            cat (" - '", var.name, "' variable:\n", sep = "")
+            print (summary (dc$dp[[dp.name]]$vars[[var.name]]))
         }
         cat ("\n")
     }
@@ -406,120 +496,6 @@ summary.data.cube <- function (dc) {
 
 
 
-compute.margin_ <-
-    function (obj, ...) {
-        UseMethod ("compute.margin_")
-    }
-compute.margin_.data.cube <-
-    function (dc,
-              var.name,
-              dim.names) {
-        dp.dim.names <- dc$var.dim.names[[var.name]]
-        dp.name <- paste (dp.dim.names, collapse = ".")
-        new.dp.name <- paste (dc$dim.names [dc$dim.names %in% dim.names], collapse = ".")
-
-        agg <- aggregate (
-            list (var.name = dc$dp[[dp.name]]$vars[[var.name]]),
-            by = dc$dp[[dp.name]]$elms[dim.names],
-            FUN = dc$var.FUN[[var.name]]
-        )
-        names (agg) [names (agg) == "var.name"] <- var.name
-
-        agg <- merge (agg, cbind (as.data.frame (dc$dp[[new.dp.name]]$elms), as.data.frame (dc$dp[[new.dp.name]]$vars)), by = dim.names, all = TRUE)
-
-        dc$dp[[new.dp.name]]$elms <- as.list (agg [, dim.names, drop = FALSE])
-        dc$dp[[new.dp.name]]$vars <- as.list (agg [, ! names (agg) %in% dim.names, drop = FALSE])
-
-        for (var.name in names (dc$dp[[new.dp.name]]$vars)) {
-            dc$dp[[new.dp.name]]$vars[[var.name]] [is.na (dc$dp[[new.dp.name]]$vars[[var.name]])] <- dc$var.NA[[var.name]]
-        }
-        
-        return (dc)
-    }
-
-compute.margin <-
-    function (obj, ...) {
-        UseMethod ("compute.margin")
-    }
-compute.margin.data.cube <- function (dc, var.name, ..., recursive = FALSE) {
-    var.name <- deparse (substitute (var.name))
-    dim.names <- sapply (eval (substitute (alist (...))), deparse)
-    compute.margin_(dc, var.name, dim.names)
-}
-
-
-## compute.margin_ <-
-##     function (obj, ...) {
-##         UseMethod ("compute.margin_")
-##     }
-## compute.margin_.data.cube <-
-##     function (dc,
-##               dim = list(),
-##               recursive = FALSE) {
-##         dc.name <- paste (dc$dim.names, collapse = ".")
-        
-##         ## Compute global margin if necessary
-##         if (length (dim) == 0 || recursive) {
-##             dc$dp[["."]] <- list()
-##             dc$dp[["."]]$elms <- list()
-##             dc$dp[["."]]$vars <-
-##                 lapply (dc$dp[[dc.name]]$vars, function (var)
-##                     sum (var))
-##             if (length (dim) == 0)
-##                 return (dc)
-##         }
-        
-##         ## List recursive margins if necessary
-##         if (recursive) {
-##             dim <-
-##                 unlist (sapply (1:length (dim), function (n)
-##                     combn (dim, n, simplify = FALSE)), recursive = FALSE)
-##         } else {
-##             dim <- list (dim)
-##         }
-        
-##         ## Compute all requested margins (except global)
-##         for (d in dim) {
-##             if (length (d) == dc$dim.nb)
-##                 next
-            
-##             d <- dc$dim.names [dc$dim.names %in% d]
-##             dp.name <- paste (d, collapse = ".")
-##             agg <-
-##                 aggregate (dc$dp[[dc.name]]$vars, by = dc$dp[[dc.name]]$elms[d], FUN =
-##                                                                                      sum)
-##             rank <-
-##                 aggregate (
-##                     x = seq_along(dc$dp[[dc.name]]$elms[d][[1]]),
-##                     by = dc$dp[[dc.name]]$elms[d],
-##                     FUN = min
-##                 )[, "x"]
-            
-##             dc$dp[[dp.name]] <- list ()
-##             dc$dp[[dp.name]]$elms <-
-##                 as.list (agg[order(rank), d, drop = FALSE])
-##             dc$dp[[dp.name]]$vars <-
-##                 as.list (agg[order(rank), !names(agg) %in% d, drop = FALSE])
-##         }
-        
-##         return (dc)
-##     }
-
-## compute.margin <-
-##     function (obj, ...) {
-##         UseMethod ("compute.margin")
-##     }
-## compute.margin.data.cube <- function (dc, ..., recursive = FALSE) {
-##     dim <- sapply (eval (substitute (alist (...))), deparse)
-##     compute.margin_(dc, dim, recursive)
-## }
-
-
-
-
-str(dc)
-dim.names <- c('b','a')
-var.names <- c('v3','v2')
 
 select_.data.cube <- function (dc, dim.names, var.names) {
     dp.name <- paste (dc$dim.names [dc$dim.names %in% dim.names], collapse = ".")
@@ -531,7 +507,6 @@ select_.data.cube <- function (dc, dim.names, var.names) {
 }
 
 
-?select_
 select.dim_ <- function (obj, ...) {
     UseMethod ("select.dim_")
 }
