@@ -4,6 +4,7 @@
 .RData
 .Rd2pdf*
 inst/doc
+\*R\*
 
 # TEMPORARY FILES
 *~

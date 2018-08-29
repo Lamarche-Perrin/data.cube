@@ -1,0 +1,31 @@
+dim (dc)
+-> return size of dimensions
+
+rename.dim (dc, d1 = dim1, d2 = dim2)
+rename.var (dc, v1 = var1, v2 = var2)
+-> rename dimensions or variables
+
+select.dim (dc, dim1, d2 = dim2)
+select.dim (dc, -dim1, -dim2)
+select.var (dc, var1, v2 = var2)
+select.var (dc, -var1, -var2)
+-> select dimensions or variables
+-> also implement starts_with(), ends_with(), matches(), and contains() ?
+
+mutate.var (dc, var3 = var2 - var1, var4 = var3 / var1 * 60)
+transmute.var (dc, var3 = var2 - var1, var4 = var3 / var1 * 60)
+-> add new variables (and only keep these new ones)
+
+filter.elm (dc, data.plane (dim1, dim2), var1 > 10, var2 > 100, strict = FALSE)
+-> filter elements
+
+arrange.elm (dc, data.plane (dim1, dim2), var1, desc (var2))
+-> reorder elements
+
+
+group_by.elm (dc, data.plane (dim1, dim2), var1, var2)
+
+see http://127.0.0.1:24313/library/dplyr/doc/dplyr.html
+-> summarise() to condense multiple values to a single value.
+-> sample_n() and sample_frac() to take random samples.
+

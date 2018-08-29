@@ -1,167 +1,87 @@
 rm (list = ls())
 
-source ('../src/data.cube.R')
-##browseVignettes(package = "dplyr")
+source ("../src/data.cube.R")
+## library ('data.cube')
 
 
-## Import datasets
+## 1. DATA PREPARATION
 
-df.123 <- read.csv ('../test/example.dim1.dim2.dim3.csv', stringsAsFactors=FALSE)
-df.12 <- read.csv ('../test/example.dim1.dim2.csv', stringsAsFactors=FALSE)
-df.23 <- read.csv ('../test/example.dim2.dim3.csv', stringsAsFactors=FALSE)
-df.1 <- read.csv ('../test/example.dim1.csv', stringsAsFactors=FALSE)
-df.2 <- read.csv ('../test/example.dim2.csv', stringsAsFactors=FALSE)
-df <- read.csv ('../test/example.csv', stringsAsFactors=FALSE)
+## 1.1. Import dataset with 'read.csv()'
 
-head (df.123)
-head (df.12)
-head (df.23)
-head (df.1)
-head (df.2)
-head (df)
+df.articles <- read.csv ("../data/geomedia.articles.csv", stringsAsFactors = FALSE)
+head (df.articles)
+
+df.countries <- read.csv ("../data/geomedia.countries.csv", stringsAsFactors = FALSE)
+head (df.countries)
 
 
-## Create data.cube
+## 1.2. Create datacube with 'as.data.cube()'
 
-df.123 %>% as.data.cube_(c ("dim3", "dim1", "dim2"), c ("var1", "var2")) %>% str ()
-df.123 %>% as.data.cube_(c ("dim3", "dim1", "dim2"), c (v1 = "var1", "var2")) %>% str ()
-df.123 %>% as.data.cube_(c (a = "dim3", b = "dim1", c = "dim2"), c ("var1", "var2")) %>% str ()
+dc <- merge (
+    as.data.cube (
+        df.articles,
+        dim.names = list (
+            media = id_media,
+            country = id_country,
+            week
+        ),
+        var.names = list (articles = article_nb)
+    ),
+    as.data.cube (
+        df.countries,
+        dim.names = list (country = WUTS5),
+        var.names = list (WUTS4, WUTS3, WUTS2, WUTS1)
+    )
+)
 
-df.123 %>% as.data.cube_(c ("dim3", "dim1", "dim2"), c ("var1", "var2")) %>% str ()
-df.123 %>% as.data.cube_(c ("dim3", "dim1", "dim2"), c ("var1")) %>% str ()
-df.123 %>% as.data.cube_(c ("dim3", "dim1"), c ("var1", "var2")) %>% str ()
-df.123 %>% as.data.cube_(c ("dim3", "dim1", "dim2")) %>% str ()
+dc <- mutate (dc, week,
+              month = substring (names, 6, 7),
+              year = substring (names, 1, 4)
+              )
 
-df.1 %>% as.data.cube_("dim1") %>% str ()
-df %>% as.data.cube_() %>% str ()
-df %>% as.data.cube_(var.names = "var10") %>% str ()
+browseVignettes(package = "dplyr")
+?dplyr::dplyr
 
-dc.123 <- df.123 %>% as.data.cube_(c ("dim1", "dim2", "dim3"))
-dc.231 <- df.123 %>% as.data.cube_(c ("dim2", "dim3", "dim1"))
-dc.321 <- df.123 %>% as.data.cube_(c ("dim3", "dim2", "dim1"))
-dc.12 <- df.12 %>% as.data.cube_(c ("dim1", "dim2"))
-dc.23 <- df.23 %>% as.data.cube_(c ("dim2", "dim3"))
-dc.1 <- df.1 %>% as.data.cube_("dim1")
-dc.2 <- df.2 %>% as.data.cube_("dim2")
-dc. <- df %>% as.data.cube_()
+??pldyr
+dc$
 
-is.data.cube (dc.1)
-is.data.cube (df.1)
+## 1.3. Get datacube's properties with 'summary()', 'dim.nb()', 'dim.names()', 'elm.nb()', and 'elm.names()'
+
+dim.nb (dc) # Number of dimensions
+dim.names (dc) # Names of dimensions
+
+elm.nb (dc) # Number of elements for each dimension
+elm.names (dc) # Names of elements for each dimension
+
+elm.nb (dc, countries) # Number of elements for the 'countries' dimension
+elm.names (dc, countries) # Names of elements for the 'countries' dimension
+
+summary (dc)
 
 
-## Join data.cubes
+## 1.4. See data structure with 'str()'
 
-join (dc.123, dc.1) %>% str ()
-join (dc.231, dc.1) %>% str ()
-join (dc.1, dc.123) %>% str ()
-join (dc.1, dc.231) %>% str ()
-join (dc.1, dc.321) %>% str ()
-
-join (dc., dc.1) %>% str ()
-join (dc.1, dc.) %>% str ()
-
-join (dc.2, dc.23) %>% str ()
-join (dc.2, dc.1, dc.23, dc.123, dc.) %>% str ()
-
-dc.123 %>% select.var_("var1") %>% str ()
-dc.123 %>% select.var_("var2") %>% str ()
-dc.123 %>% select.var_("var1") %>% join (dc.123 %>% select.var_("var2")) %>% str ()
-
-dc <- join (dc.2, dc.1, dc.12, dc.23, dc.123, dc.)
 str (dc)
 
 
-## Reorder data.cube
+## 1.5. Transform datacube back into dataframe with 'as.data.frame()'
 
-dc %>% reorder.dim_("dim3") %>% reorder.var_("var6") %>% str()
-dc %>% reorder.dim_(dc$dim.names [order (dc$dim.names)]) %>% reorder.var_(dc$var.names [order (dc$var.names)]) %>% str ()
-
-
-## Rename dimensions and variables
-
-dc %>% rename.dim_(c (c = "dim3", b = "dim2")) %>% str ()
-dc %>% rename.var_(c (v2 = "var2", v5 = "var5")) %>% str ()
-
-dc %>% rename.dim_(c (a = "dim1", b = "dim2", c = "dim3")) %>% str ()
-dc %>% rename.var_(paste0 ("var", 1:10) %>% setNames (paste0 ("v", 1:10))) %>% str ()
-
-dc <- dc %>%
-    reorder.dim_(dc$dim.names [order (dc$dim.names)]) %>%
-    reorder.var_(dc$var.names [order (dc$var.names)]) %>%
-    rename.dim_(c (a = "dim1", b = "dim2", c = "dim3")) %>%
-    rename.var_(paste0 ("var", 1:10) %>% setNames (paste0 ("v", 1:10)))
-str (dc)
-
-
-## Convert to data.frame
-
-as.data.frame (dc)
-as.data.frame (dc, complete = TRUE)
-
-
-## Basic properties
-
-dim.names (dc)
-dim.nb (dc)
-
-var.names (dc)
-var.nb (dc)
-
-
-## Compute margins
-
-dc %>% compute.var_("v1", c ("b", "a")) %>% str ()
-dc %>% compute.var_(c ("v2", "v1"), c ("b", "a")) %>% str ()
-dc %>% compute.var_(dim.names = c ("b", "a")) %>% str ()
-
-dc %>% compute.var_(dim.names = c ("c", "a")) %>% str ()
-dc %>% compute.var_(c ("v2", "v3")) %>% str ()
-dc %>% compute.var_() %>% str ()
-
-
-## Select data.plane
-
-dc %>% str ()
-dc %>% select.dim_("a") %>% str ()
-dc %>% select.dim_(c ("b", "a")) %>% str ()
-dc %>% select.dim_(c ("a", "c")) %>% str ()
-dc %>% select.dim_() %>% str ()
-
-dc %>% select.dim_(c (dim2 = "b", dim1 = "a")) %>% str ()
-dc %>% select.dim_(c (dim2 = "b", "a")) %>% str ()
-
-dc %>% select.var_("v1") %>% str ()
-dc %>% select.var_(c ("v9", "v1")) %>% str ()
-dc %>% select.var_(c ("v2", "v1")) %>% str ()
-dc %>% select.var_() %>% str ()
-
-dc %>% select.var_(c (var9 = "v9", var1 = "v1")) %>% str ()
-dc %>% select.var_(c ("v9", var1 = "v1")) %>% str ()
-
-
-source ('../src/data.cube.R')
-## Create new variable
-x <- 5
-dc %>% mutate.var_("v11 = 1", c ("a", "b", "c")) %>% str ()
-dc %>% mutate.var_("v11 = 1") %>% str ()
-dc %>% mutate.var_("v11 = x") %>% str ()
-dc %>% mutate.var_("v11 = v1 + v2") %>% str ()
-
-dc %>% mutate.var_("v11 = v1 + v2", c ("b", "a")) %>% str ()
-dc %>% mutate.var_(c ("v11 = v1 + v2", "v12 = ifelse (v3 == 'A', v11, NA)"), c ("b", "a")) %>% str ()
-
-
-## Filter elements
-
-x <- 5
-dc %>% filter.elm_(c ("a", "b", "c"), "v1 > 5")
-dc %>% filter.elm_(c ("a", "b"), "v1 > x")
-dc %>% filter.elm_(c ("a", "b"), c ("v1 > x", "v3 != ''"))
+head (as.data.frame (dc), 20)
+dc %>% as.data.frame () %>% head (20) # Same as previous line with pipes '%>%'
 
 
 
+## 2. EXPLORE TEMPORAL DIMENSION
 
-dc %>% select.dim (a) %>% plot.var (v1)
+## 2.1. Select temporal dimension with 'select.dim()'
+
+dc %>%
+  select.dim (weeks) %>%
+  as.data.frame ()
+
+dc %>%
+  select.dim (weeks) %>%
+  plot.obs ()
 
 p <- # Get plot and save it in variable 'p'
   dc %>%
