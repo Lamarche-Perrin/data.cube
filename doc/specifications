@@ -1,3 +1,24 @@
+as.data.cube (df, list (d1 = dim1, d2 = dim2), list (v1 = var1, v2 = var2))
+join (dc1, dc2, dc3)
+
+reorder.dim (dim1, dim2)
+rename.dim (dc, d1 = dim1, d2 = dim2)
+select.dim (dc, dim1, d2 = dim2)
+
+reorder.var (var1, var2)
+rename.var (dc, v1 = var1, v2 = var2)
+select.var (dc, var1, v2 = var2)
+
+compute.var (c (dim1, dim2), var1)
+mutate.var (dc, var3 = var2 - var1, var4 = var3 / var1 * 60)
+transmute.var (dc, var3 = var2 - var1, var4 = var3 / var1 * 60)
+
+filter.elm (dc, c (dim1, dim2), var1 > 10, var2 > 100)
+arrange.elm (dc, c (dim1, dim2), var1, desc (var2))
+group.elm (dc, c (dim1, dim2), var1, var2)
+
+
+
 dim (dc)
 -> return size of dimensions
 
@@ -16,10 +37,10 @@ mutate.var (dc, var3 = var2 - var1, var4 = var3 / var1 * 60)
 transmute.var (dc, var3 = var2 - var1, var4 = var3 / var1 * 60)
 -> add new variables (and only keep these new ones)
 
-filter.elm (dc, data.plane (dim1, dim2), var1 > 10, var2 > 100, strict = FALSE)
+filter.elm (dc, dim1, dim2, var1 > 10, var2 > 100)
 -> filter elements
 
-arrange.elm (dc, data.plane (dim1, dim2), var1, desc (var2))
+arrange.elm (dc, dim1, dim2, var1, desc (var2))
 -> reorder elements
 
 
