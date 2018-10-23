@@ -99,6 +99,7 @@ str (dc)
 ## Convert to data.frame
 
 as.data.frame (dc)
+as.data.frame (dc, stringsAsFactors = TRUE)
 as.data.frame (dc, complete = TRUE)
 
 
@@ -115,6 +116,7 @@ var.nb (dc)
 
 dc %>% compute.var_(c ("b", "a"), "v1") %>% str ()
 dc %>% compute.var_(c ("b", "a"), c ("v2", "v1")) %>% str ()
+dc %>% compute.var_(c ("b", "a"), c ("v2", var1 = "v1")) %>% str ()
 dc %>% compute.var_(c ("b", "a")) %>% str ()
 
 dc %>% compute.var_(c ("c", "a")) %>% str ()
@@ -319,7 +321,7 @@ str (dc)
 
 ## Arrange elements
 
-dca <- dc %>% arrange.elm (b, name) %>% arrange.elm (c (b, c), v4) %>% arrange.elm (a, name, v6)
+dca <- dc %>% arrange.elm (b, name) %>% arrange.elm (c (b, c), desc (v4)) %>% arrange.elm (a, desc (name), v6)
 
 dca %>% str ()
 dca %>% rename.dim (dim2 = b) %>% str ()
@@ -330,10 +332,11 @@ dca %>% select.var (v6) %>% str ()
 
 dc %>% as.data.frame ()
 dc %>% arrange.elm (a, name) %>% as.data.frame ()
+dc %>% arrange.elm (a, desc(name)) %>% as.data.frame ()
 dc %>% arrange.elm (b, name) %>% arrange.elm (a, name) %>% as.data.frame ()
 
-dc %>% select.dim (a) %>% arrange.elm (a, v6) %>% as.data.frame ()
-dc %>% select.dim (a) %>% arrange.elm (a, v6, v2) %>% as.data.frame ()
+dc %>% select.dim (a) %>% arrange.elm (a, desc(v6)) %>% as.data.frame ()
+dc %>% select.dim (a) %>% arrange.elm (a, desc(v6), v2) %>% as.data.frame ()
 dc %>% arrange.elm (a, v6, v2) %>% as.data.frame ()
 
 dc %>% select.var (v1) %>% select.dim (a, b) %>% as.data.frame ()
@@ -370,10 +373,15 @@ var.nb (dc)
 
 dc %>% compute.var (c (b, a), v1) %>% str ()
 dc %>% compute.var (c (b, a), v2, v1) %>% str ()
+dc %>% compute.var (c (b, a), v2, var1 = v1) %>% str ()
 dc %>% compute.var (c (b, a)) %>% str ()
 
 dc %>% compute.var (c (c, a)) %>% str ()
 dc %>% compute.var (c (), v2, v3) %>% str ()
+
+dc %>% compute.var (c (a, b, c), v8, v4) %>% str ()
+
+dc %>% compute.var (c (b, a), var1 = v1, var3 = v3, var5 = v5) %>% str ()
 
 
 ## Select data.plane
@@ -432,14 +440,11 @@ dc %>% filter.elm (c (a, b), v1 > 100) %>% str ()
 
 ## Plot variables
 
-source ('../src/data.cube.R')
-dc <- saved.dc
-saved.dc <- dc
-
 dc %>% plot.var (v1)
 dca <- dc %>% arrange.elm (c, name) %>% arrange.elm (b, name) %>% arrange.elm (a, name)
 dca %>% plot.var (v1)
 dca %>% arrange.elm (c (a, b, c), v1) %>% plot.var (v1)
+dca %>% arrange.elm (c (a, b, c), desc (v1)) %>% plot.var (v1)
 
 dc %>% select.dim (a) %>% plot.var (v1)
 dca %>% select.dim (a) %>% plot.var (v1)
@@ -451,130 +456,63 @@ dca %>% select.dim (a, b) %>% arrange.elm (c (a, b), v1) %>% plot.var (v1, v2)
 dca %>% select.dim (a, b) %>% arrange.elm (c (a, b), v1) %>% arrange.elm (c (a, b), v2) %>% plot.var (v1, v2)
 dca %>% select.dim (a, b) %>% arrange.elm (c (a, b), v2, v1) %>% plot.var (v1, v2)
 
-dca %>% selecte.var (v2, v1) %>% select.dim (a, b) %>% plot.var ()
+dca %>% select.var (v2, v1) %>% select.dim (a, b) %>% plot.var ()
+
+dca %>% filter.elm (a, name == "a2") %>% plot.var (v1)
+dca %>% filter.elm (a, name == "a2") %>% filter.elm (b, name == "b1") %>% plot.var (v1)
+
+dca %>% arrange.elm (b, v1) %>% plot.var (v1, sep.dim.names = c (b, c))
+dca %>% filter.elm (b, name == "b2") %>% plot.var (v1, sep.dim.names = c (b, c))
 
 
+dca %>% plot.var (v1, type = "bar")
+dca %>% plot.var (v1, type = "line")
+dca %>% plot.var (v1, type = "point")
+
+dca %>% plot.var (v1, v2, type = "bar")
+dca %>% plot.var (v1, v2, type = "line")
+dca %>% plot.var (v1, v2, type = "point")
+
+dca %>% plot.var (v1, sep.dim.names = b, type = "bar")
+dca %>% plot.var (v1, sep.dim.names = b, type = "line")
+dca %>% plot.var (v1, sep.dim.names = b, type = "point")
+
+dca %>% plot.var (v1, v2, sep.dim.names = b, type = "bar")
+dca %>% plot.var (v1, v2, sep.dim.names = b, type = "line")
+dca %>% plot.var (v1, v2, sep.dim.names = b, type = "point")
+
+dca %>% plot.var (v1, sep.dim.names = c (b, c), type = "bar")
+dca %>% plot.var (v1, sep.dim.names = c (b, c), type = "line")
+dca %>% plot.var (v1, sep.dim.names = c (b, c), type = "point")
 
 
+## Compute expected value
 
-rem.weeks <- # Vector of weeks to remove
-  c ("2013-12-30",
-     "2014-06-16",
-     "2014-09-08",
-     "2015-01-19",
-     "2015-06-29")
+source ('../src/data.cube.R')
 
-dc %>%
-  select.dim (weeks) %>%
-  remove.elm (weeks, rem.weeks, suppress = TRUE) %>%
-  plot.obs (type = "line")
+dc %>% select.var (v1) %>% select.dim (a, b) %>%
+    compute.var (a, v1.a = v1) %>% compute.var (b, v1.b = v1) %>% compute.var (c(), v1. = v1) %>% 
+    mutate.var (c (a, b), model = v1.a * v1.b / v1.) %>%
+    as.data.frame
 
-dc <- # Remove weeks and save results in 'dc'
-  dc %>%
-  remove.elm (weeks, rem.weeks, suppress = TRUE)
+dc %>% as.data.frame
+dc %>% compute.var (c (a, b, c), v3) %>% as.data.frame
+dim.names <- c("a","b","c")
+var.names <- "v3"
+dc %>% mutate.var (v3) %>% as.data.frame
 
+var.names <- 'v1'
+dim.names <- c('b','c')
 
+for (var.name in var.names) {
+    var.dim.names <- dc$var.dim.names [[var.name]]
+    dp.name <- data.plane.name (dc, var.dim.names)
 
-## 3. EXPLORE SPACIAL DIMENSION
+    dc$dp[[dp.name]] %>% select (var.dim.names) %>% as.data.frame ()
+    dc %>% mutate.var_("b", "v1.b = v1") %>% compute.var_(c ("a", "b", "c"), "v1.b") %>% as.data.frame
+    dc$dp[[dp.name]]
+}
 
-## 3.1. Order by countries' name with 'arrange.elm()'
-
-dc %>%
-  select.dim (countries) %>%
-  arrange.elm (countries) %>%
-  plot.obs ()
-
-
-## 3.2. Order by values with 'arrange.obs()'
-
-dc %>%
-  select.dim (countries) %>%
-  arrange.elm (countries, var = articles, decreasing = TRUE) %>%
-  plot.obs ()
-
-dc <-
-  dc %>%
-  arrange.elm (countries, var = articles, decreasing = TRUE)
-
-
-## 3.3. Select a subset of particular countries with 'select.elm()'
-
-G8 <- c ("USA", "JPN", "DEU", "FRA", "RUS", "GBR", "ITA", "CAN")
-
-dc %>%
-  select.dim (countries) %>%
-  select.elm (countries, elm.array = G8) %>%
-  plot.obs ()
-
-
-## 3.4. Select the top 20 countries with 'select.elm()'
-
-dc %>%
-  select.dim (countries) %>%
-  select.elm (countries, top.nb = 20, var = articles) %>%
-  plot.obs ()
-
-
-## 3.5. Select countries with more than 5000 articles with 'filter.elm()'
-
-dc %>%
-  select.dim (countries) %>%
-  select.elm (countries, filter = articles > 5000) %>%
-  plot.obs ()
-
-
-
-## 4. EXPLORE SPACIO-TEMPORAL DIMENSION
-
-## 4.1. Prepare data.cube
-
-weeks <- elm.names (dc, weeks)
-weeks.2014 <- weeks [substring (weeks, 1, 4) == "2014"] # Select all weeks starting by '2014'
-weeks.2014
-
-dc2 <-
-  dc %>%
-  select.dim (weeks, countries) %>%
-  select.elm (weeks, weeks.2014) %>%
-  select.elm (countries, G8) %>%
-  arrange.elm (weeks, countries)
-  
-  
-## 4.2. Plot countries and weeks
-
-dc2 %>% plot.obs ()
-
-
-## 4.3. Separate the 'countries' dimension
-
-dc2 %>% plot.obs (sep.dim = countries)
-
-dc2 %>% plot.obs (sep.dim = countries, type = "line")
-
-
-## 4.4. Bidimensional plot of countries and weeks
-
-dc2 %>% biplot.obs (x.dim = countries, y.dim = weeks)
-
-
-
-## 5. FINDING OUTLIERS
-
-## 5.1. Data preparation
-
-dc3 <-
-  dc %>%
-  select.dim (weeks, countries) %>%
-  select.elm (countries, c("USA","RUS","FRA","ITA","JPN")) %>%
-  arrange.elm (weeks, countries)
-
-
-## 5.2. Compute a simple model (taking into account the global popularity of countries)
-
-# Raw observations
-dc3 %>% plot.obs (sep.dim = countries, type = "line")
-
-# Raw model
 dc3 %>%
   compute.model () %>%
   plot.obs (model, sep.dim = countries, type = "line")

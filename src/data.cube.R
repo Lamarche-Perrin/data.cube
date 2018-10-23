@@ -313,7 +313,18 @@ rename.var_.data.cube <- function (dc, var.names) {
     ## Rename var.names in dp.arrange.var.names
     if (! is.null (dc$dp.arrange.var.names)) {
         for (dp.name in names (dc$dp.arrange.var.names)) {
-            dc$dp.arrange.var.names[[dp.name]] <- ifelse (dc$dp.arrange.var.names[[dp.name]] %in% names (new.var.names), new.var.names [dc$dp.arrange.var.names[[dp.name]]], dc$dp.arrange.var.names[[dp.name]])
+            for (i in seq_along (dc$dp.arrange.var.names[[dp.name]])) {
+                var.name <- dc$dp.arrange.var.names[[dp.name]][i]
+                f <- function () {}
+                body (f) <- parse_expr (var.name)
+                struct <- codetools::findGlobals (f, merge = FALSE)
+                struct$variables <- ifelse (struct$variable %in% names (new.var.names), new.var.names [struct$variable], struct$variable)
+                if (length (struct$functions) > 0) {
+                    dc$dp.arrange.var.names[[dp.name]][i] <- paste0 (struct$functions, "(", paste (struct$variables, collapse = ","), ")")
+                } else {
+                    dc$dp.arrange.var.names[[dp.name]][i] <- paste (struct$variables, collapse = ",")
+                }
+            }
         }
     }    
 
@@ -395,7 +406,7 @@ is.data.cube <- function (obj) {
 
 
 as.data.frame <- function (obj, ...) UseMethod ("as.data.frame")
-as.data.frame.data.cube <- function (dc, complete = FALSE) {
+as.data.frame.data.cube <- function (dc, complete = FALSE, stringsAsFactors = FALSE) {
 
     if (complete) { dc <- dc %>% complete.elm_(dc$dim.names) }
     dc <- dc %>% apply.arrange.elm_(dc$dim.names)
@@ -406,7 +417,11 @@ as.data.frame.data.cube <- function (dc, complete = FALSE) {
     ## Replace element indices by element names
     for (dim in dc$dim.names) {
         elm.names <- dc$dp[[dim]]$name [order (dc$dp[[dim]][[dim]])]
-        df[[dim]] <- factor (elm.names [df[[dim]]], levels = dc$dp[[dim]]$name)
+        if (stringsAsFactors) {
+            df[[dim]] <- factor (elm.names [df[[dim]]], levels = dc$dp[[dim]]$name)
+        } else {
+            df[[dim]] <- elm.names [df[[dim]]]
+        }
     }
 
     return (df)
@@ -430,32 +445,49 @@ compute.var_.data.cube <-
     function (dc,
               dim.names = character(0),
               var.names = dc$var.names) {
+
+        ## Get var.names
+        if (is.null (names (var.names))) { names (var.names) <- var.names }
+        names (var.names) <- ifelse (names (var.names) != "", names (var.names), var.names)
         
-        var.names <- var.names %>% intersect (names (dc$var.dim.names) [sapply (dc$var.dim.names, function (var) all (dim.names %in% var) && ! all (var %in% dim.names))])
+        sup.var.names <- var.names [var.names %in% names (dc$var.dim.names) [sapply (dc$var.dim.names, function (var) all (dim.names %in% var) && ! all (var %in% dim.names))]]
+        sub.var.names <- var.names [var.names %in% names (dc$var.dim.names) [sapply (dc$var.dim.names, function (var) all (var %in% dim.names) && ! all (dim.names %in% var))]]
 
         if (length (dim.names) == 0) { ## If grand total
             if (is.null (dc$dp[["$"]])) { dc$dp[["$"]] <- list() }
 
-            for (var.name in var.names) {
-                if (var.name %in% names (dc$dp[["$"]])) { next }
-                dp.name <- data.plane.name (dc, dc$var.dim.names[[var.name]])
+            for (to.var.name in names (sup.var.names)) {
+                if (to.var.name %in% names (dc$dp[["$"]])) { next }
+
+                from.var.name <- sup.var.names [to.var.name]
+                dp.name <- data.plane.name (dc, dc$var.dim.names[[from.var.name]])
 
                 ## Aggregate and store data
-                dc$dp[["$"]][[var.name]] <- dc$var.FUN[[var.name]] (dc$dp[[dp.name]][[var.name]])
+                dc$dp[["$"]][[to.var.name]] <- unname (dc$var.FUN[[from.var.name]] (dc$dp[[dp.name]][[from.var.name]]))
+
+                ## Update attributes
+                if (from.var.name != to.var.name) {
+                    dc$var.names <- dc$var.names %>% append (to.var.name)
+                    dc$var.dim.names[[to.var.name]] <- dc$dim.names %>% intersect (dim.names)
+                    dc$var.NA[[to.var.name]] <- dc$var.NA[[from.var.name]]
+                    dc$var.FUN[[to.var.name]] <- dc$var.FUN[[from.var.name]]
+                }
             }
 
         } else { ## If other data.plane
             new.dp.name <- data.plane.name (dc, dim.names)
 
-            for (var.name in var.names) {
-                if (var.name %in% names (dc$dp[[new.dp.name]])) { next }
-                dp.name <- data.plane.name (dc, dc$var.dim.names[[var.name]])
+            for (to.var.name in names (sup.var.names)) {
+                if (to.var.name %in% names (dc$dp[[new.dp.name]])) { next }
+
+                from.var.name <- sup.var.names [to.var.name]
+                dp.name <- data.plane.name (dc, dc$var.dim.names[[from.var.name]])
                 
                 ## Aggregate data
-                expr <- parse_expr (paste0 ("dc$var.FUN[[var.name]] (", var.name, ")"))
+                expr <- parse_expr (paste0 ("dc$var.FUN[[from.var.name]] (", from.var.name, ")"))
                 new.dp <- dc$dp[[dp.name]] %>%
                     group_by (.dots = dim.names) %>%
-                    summarise (!! var.name := !! expr) %>%
+                    summarise (!! to.var.name := !! expr) %>%
                     ungroup ()
 
                 ## Store data
@@ -463,6 +495,36 @@ compute.var_.data.cube <-
                     dc$dp[[new.dp.name]] <- new.dp
                 } else {
                     dc$dp[[new.dp.name]] <- dc$dp[[new.dp.name]] %>% full_join (new.dp, by = dim.names)
+                }
+
+                ## Update attributes
+                if (from.var.name != to.var.name) {
+                    dc$var.names <- dc$var.names %>% append (to.var.name)
+                    dc$var.dim.names[[to.var.name]] <- dc$dim.names %>% intersect (dim.names)
+                    dc$var.NA[[to.var.name]] <- dc$var.NA[[from.var.name]]
+                    dc$var.FUN[[to.var.name]] <- dc$var.FUN[[from.var.name]]
+                }
+            }
+
+            for (to.var.name in names (sub.var.names)) {
+                if (to.var.name %in% names (dc$dp[[new.dp.name]])) { next }
+
+                from.var.name <- sub.var.names [to.var.name]
+                dp.name <- data.plane.name (dc, dc$var.dim.names[[from.var.name]])
+
+                ## Store data
+                if (dp.name == "$") {
+                    dc$dp[[new.dp.name]] <- dc$dp[[new.dp.name]] %>% mutate (!! to.var.name := !! dc$dp[["$"]][[from.var.name]])
+                } else {
+                    dc$dp[[new.dp.name]] <- dc$dp[[new.dp.name]] %>% left_join (dc$dp[[dp.name]] %>% select (dc$var.dim.names[[from.var.name]], from.var.name) %>% rename (!! to.var.name := !! from.var.name), by = dc$var.dim.names[[from.var.name]])
+                }
+                
+                ## Update attributes
+                if (from.var.name != to.var.name) {
+                    dc$var.names <- dc$var.names %>% append (to.var.name)
+                    dc$var.dim.names[[to.var.name]] <- dc$dim.names %>% intersect (dim.names)
+                    dc$var.NA[[to.var.name]] <- dc$var.NA[[from.var.name]]
+                    dc$var.FUN[[to.var.name]] <- dc$var.FUN[[from.var.name]]
                 }
             }
 
@@ -681,8 +743,15 @@ select.var_.data.cube <-
         ## Adjust dp.arrange.var.names
         if (! is.null (dc$dp.arrange.var.names)) {
             for (dp.name in names (dc$dp.arrange.var.names)) {
-                new.var.names <- dc$dp.arrange.var.names[[dp.name]] %>% setdiff (dc$dp.arrange.var.names[[dp.name]] %>% intersect (old.var.names) %>% setdiff (var.names))
-                dc$dp.arrange.var.names[[dp.name]] <- new.var.names
+                for (i in seq_along (dc$dp.arrange.var.names[[dp.name]])) {
+                    var.name <- dc$dp.arrange.var.names[[dp.name]][[i]]
+                    f <- function () {}
+                    body (f) <- parse_expr (var.name)
+                    struct <- codetools::findGlobals (f, merge = FALSE)
+                    if (any (struct$variables %in% (old.var.names %>% setdiff (var.names)))) { dc$dp.arrange.var.names[[dp.name]][[i]] <- "" }
+                }
+
+                dc$dp.arrange.var.names[[dp.name]] <- dc$dp.arrange.var.names[[dp.name]] [dc$dp.arrange.var.names[[dp.name]] != ""]
 
                 ## Remove data.plane if empty
                 if (length (dc$dp.arrange.var.names[[dp.name]]) == 0) {
@@ -723,6 +792,7 @@ complete.elm_.data.cube <-
     } 
 
 
+## TODO : suppress = TRUE ?
 filter.elm.indices <- function (obj, ...) { UseMethod ("filter.elm.indices") }
 filter.elm.indices.data.cube <-
     function (dc, dim.name, elm.indices) {
@@ -812,7 +882,7 @@ arrange.elm_.data.cube <- function (dc, dim.names, var.names) {
     if (is.null (dc$dp.arrange.var.names)) { dc$dp.arrange.var.names <- list() }
 
     dp.name <- data.plane.name (dc, dim.names)
-    if (is.null (dc$dp.arrange.var.names[[dp.name]])) { dc$dp.arrange.var.names[[dp.name]] <- list() }
+    if (is.null (dc$dp.arrange.var.names[[dp.name]])) { dc$dp.arrange.var.names[[dp.name]] <- character(0) }
     dc$dp.arrange.var.names[[dp.name]] <- append (unname (var.names), dc$dp.arrange.var.names[[dp.name]])
 
     return (dc)
@@ -938,17 +1008,20 @@ summary.data.cube <- function (dc) {
 
 plot.var <- function (obj, ...) { UseMethod ("plot.var") }
 plot.var.data.cube <-
-    function (dc, ...) {
+    function (dc, ..., sep.dim.names = NULL, type = "bar") {
         str.var.names <- dot.names (enquos (...))
         if (length (str.var.names) == 0) { str.var.names <- dc$var.names }
         
-        dc %>% plot.var_(str.var.names)
+        str.sep.dim.names <- arg.names (substitute (sep.dim.names))
+        if (is.null (str.sep.dim.names)) { str.sep.dim.names <- character(0) }
+
+        dc %>% plot.var_(str.var.names, sep.dim.names = str.sep.dim.names, type = type)
     }
 
 
 plot.var_ <- function (obj, ...) { UseMethod ("plot.var_") }
 plot.var_.data.cube <-
-    function (dc, var.names = dc$var.names) {
+    function (dc, var.names = dc$var.names, sep.dim.names = character(0), type = "bar") {
 
         dp.name <- data.plane.name (dc)
         var.names <- var.names %>% intersect (names (dc$dp[[dp.name]]))
@@ -962,35 +1035,106 @@ plot.var_.data.cube <-
         unique.dim.names <- dim.names [sapply (dim.names, function (dim.name) length (unique (df[[dim.name]])) == 1)]
         multiple.dim.names <- dim.names %>% setdiff (unique.dim.names)
 
+        if (length (sep.dim.names) > 0) {
+            multiple.dim.names <- multiple.dim.names %>% setdiff (sep.dim.names)
+            sep.dim.names <- sep.dim.names %>% setdiff (unique.dim.names)
+        }
+
         df$label <- apply (df, 1, function (row) paste (row [multiple.dim.names], collapse = " / "))
         df$label <- factor (df$label, levels = unique (df$label))
 
-        ## Transform data.frame to build bar plot
-        if (length (var.names) == 1) {
-            p <- ggplot (df, aes (x = label, y = get (var.names))) + 
-                geom_bar (stat = "identity")
-        } else {
-            dfm <- df %>% select ("label", var.names) %>% melt (id.vars = "label")            
-            p <- ggplot (dfm, aes (x = label, y = value)) + 
-                geom_bar (aes (fill = variable), stat = "identity", position = "dodge")
+        if (length (sep.dim.names) > 0) {
+            df$sep.label <- apply (df, 1, function (row) paste (row [sep.dim.names], collapse = " / "))
+            df$sep.label <- factor (df$sep.label, levels = unique (df$sep.label))
+        }
+
+        ## Check options compatibility
+        if (length (var.names) > 1 && length (sep.dim.names) > 0) {
+            stop ("cannot plot multiple variables with separate dimensions")
+        }
+
+        ## Create plot
+        if (length (var.names) == 1) { ## If only one variable
+            if (length (sep.dim.names) == 0) { ## If not separate dimension
+                if (type == "bar") {
+                    p <- ggplot (df, aes (x = label, y = get (var.names))) + 
+                        geom_bar (stat = "identity")
+                }
+
+                if (type == "line") {
+                    p <- ggplot (df, aes (x = label, y = get (var.names), group = 1)) + 
+                        geom_line ()
+                }
+
+                if (type == "point") {
+                    dfm <- df %>% select ("label", var.names) %>% melt (id.vars = "label")
+                    p <- ggplot (data = dfm, aes (x = label, y = variable)) +
+                        geom_point (aes (size = value), pch = 21, color = "black", fill = "grey") +
+                        guides (size = guide_legend (title = var.names))
+                }
+            } else { ## If separate dimensions
+                if (type == "bar") {
+                    p <- ggplot (df, aes (x = label, y = get (var.names))) + 
+                        geom_bar (aes (fill = sep.label), stat = "identity", position = "dodge") +
+                        guides (fill = guide_legend (title = paste (sep.dim.names, collapse = " x ")))
+                }
+
+                if (type == "line") {
+                    p <- ggplot (df, aes (x = label, y = get (var.names), group = sep.label, colour = sep.label)) + 
+                        geom_line () +
+                        guides (colour = guide_legend (title = paste (sep.dim.names, collapse = " x ")))
+                }
+
+                if (type == "point") {
+                    p <- ggplot (data = df, aes (x = label, y = factor (sep.label, level = rev (unique (sep.label))))) +
+                        geom_point (aes (size = get (var.names)), pch = 21, color = "black", fill = "grey") +
+                        guides (size = guide_legend (title = var.names))
+                }
+            }
+        } else { ## If multiple variables
+            dfm <- df %>% select ("label", var.names) %>% melt (id.vars = "label")
+
+            if (type == "bar") {
+                p <- ggplot (dfm, aes (x = label, y = value)) + 
+                    geom_bar (aes (fill = variable), stat = "identity", position = "dodge") +
+                    guides (fill = guide_legend (title = paste (sep.dim.names, collapse = " x ")))
+            }
+
+            if (type == "line") {
+                p <- ggplot (dfm, aes (x = label, y = value, group = variable, colour = variable)) +
+                    geom_line ()
+            }
+
+            if (type == "point") {
+                dfm <- df %>% select ("label", var.names) %>% melt (id.vars = "label")
+                p <- ggplot (data = dfm, aes (x = label, y = factor (variable, level = rev (var.names)))) +
+                    geom_point (aes (size = value), pch = 21, color = "black", fill = "grey")
+            }
         }
         
         ## Adjust axis labels
         p <- p + xlab (paste (multiple.dim.names, collapse = " x "))
-        if (length (var.names) == 1) { p <- p + ylab (var.names) } else { p <- p + ylab ("value") }
+
+        if (type == "point") {
+            if (length (var.names) == 1) {
+                p <- p + ylab (paste (sep.dim.names, collapse = " x "))
+            } else {
+                p <- p + ylab ("variable")
+            }
+        } else {
+            if (length (var.names) == 1) { p <- p + ylab (var.names) } else { p <- p + ylab ("value") }
+        }
         
         ## p <- p + theme (axis.text.x = element_text (angle = 90, hjust = 1))
 
-        ## Adjust title
+        ## Adjust subtitle
         if (length (unique.dim.names) > 0) {
-            subtitle1 <- paste (unique.dim.names, collapse = " x ")
-            subtitle2 <- paste (df [1, unique.dim.names], collapse = " / ")
-            p <- p + labs (subtitle = paste (subtitle1, "=", subtitle2))
+            subtitle <- paste (unique.dim.names, "=", df [1, unique.dim.names]) %>% paste (collapse = " / ")
+            p <- p + labs (subtitle = subtitle)
         }
 
         return (p)
     }
-
 
 
 
@@ -1117,88 +1261,71 @@ plot.var_.data.cube <-
 ##     }
 
 
-biplot.var_ <- function (obj, ...) {
-    UseMethod ("biplot.var_")
-}
-biplot.var_.data.cube <- function (dc, x.dim, y.dim, var.name) {
-    ## Get data
-    df <- as.data.frame (dc)
+## biplot.var_ <- function (obj, ...) { UseMethod ("biplot.var_") }
+## biplot.var_.data.cube <- function (dc, x.dim, y.dim, var.name) {
+##     ## Get data
+##     df <- as.data.frame (dc)
     
-    uniq.dim.names <- c()
-    for (d in dc$dim.names)
-        if (length (unique (df[, d])) == 1)
-            uniq.dim.names <- append (uniq.dim.names, d)
-    ununiq.dim.names <- dc$dim.names [!dc$dim.names %in% uniq.dim.names]
+##     uniq.dim.names <- c()
+##     for (d in dc$dim.names)
+##         if (length (unique (df[, d])) == 1)
+##             uniq.dim.names <- append (uniq.dim.names, d)
+##     ununiq.dim.names <- dc$dim.names [!dc$dim.names %in% uniq.dim.names]
     
-    ## Build plot
-    p <-
-        ggplot (data = df, aes (y = factor (get (x.dim), levels = rev (dc$elm.names[[x.dim]])), x = factor (get (y.dim)))) +
-        xlab (y.dim) + ylab (x.dim)
+##     ## Build plot
+##     p <-
+##         ggplot (data = df, aes (y = factor (get (x.dim), levels = rev (dc$elm.names[[x.dim]])), x = factor (get (y.dim)))) +
+##         xlab (y.dim) + ylab (x.dim)
     
-    if (var.name != "ratio" && var.name != "deviation") {
-        p <-
-            p + geom_point (aes (size = get (var.name)),
-                            pch = 21,
-                            color = "black",
-                            fill = "grey") +
-            guides (size = guide_legend (title = var.name)) +
-            scale_size (range = c(1, 20))
-    } else {
-        var2.name <- dc$var.names[1]
-        p <-
-            p + geom_point (aes (fill = get (var.name), size = get (var2.name)),
-                            pch = 21,
-                            color = "black") +
-            guides (fill = guide_legend (title = var.name),
-                    size = guide_legend (title = var2.name)) +
-            scale_size (range = c(1, 20))
+##     if (var.name != "ratio" && var.name != "deviation") {
+##         p <-
+##             p + geom_point (aes (size = get (var.name)),
+##                             pch = 21,
+##                             color = "black",
+##                             fill = "grey") +
+##             guides (size = guide_legend (title = var.name)) +
+##             scale_size (range = c(1, 20))
+##     } else {
+##         var2.name <- dc$var.names[1]
+##         p <-
+##             p + geom_point (aes (fill = get (var.name), size = get (var2.name)),
+##                             pch = 21,
+##                             color = "black") +
+##             guides (fill = guide_legend (title = var.name),
+##                     size = guide_legend (title = var2.name)) +
+##             scale_size (range = c(1, 20))
         
-        if (var.name == "ratio" ||
-            var.name == "deviation" &&
-            dc$model$type == "ratio")
-            p <-
-                p + scale_fill_gradient2 (
-                        low = "blue",
-                        mid = "white",
-                        high = "red",
-                        midpoint = 1
-                    )
-        else
-            p <-
-                p + scale_fill_gradient2 (
-                        low = "blue",
-                        mid = "white",
-                        high = "red",
-                        midpoint = 0
-                    )
-    }
+##         if (var.name == "ratio" ||
+##             var.name == "deviation" &&
+##             dc$model$type == "ratio")
+##             p <-
+##                 p + scale_fill_gradient2 (
+##                         low = "blue",
+##                         mid = "white",
+##                         high = "red",
+##                         midpoint = 1
+##                     )
+##         else
+##             p <-
+##                 p + scale_fill_gradient2 (
+##                         low = "blue",
+##                         mid = "white",
+##                         high = "red",
+##                         midpoint = 0
+##                     )
+##     }
     
-    p <-
-        p + theme (axis.text.x = element_text (angle = 90, hjust = 1))
+##     p <-
+##         p + theme (axis.text.x = element_text (angle = 90, hjust = 1))
     
-    if (length (uniq.dim.names) > 0) {
-        title1 <- paste (uniq.dim.names, collapse = " x ")
-        title2 <- paste (df[1, uniq.dim.names], collapse = " / ")
-        p <- p + labs (subtitle = paste (title1, "=", title2))
-    }
+##     if (length (uniq.dim.names) > 0) {
+##         title1 <- paste (uniq.dim.names, collapse = " x ")
+##         title2 <- paste (df[1, uniq.dim.names], collapse = " / ")
+##         p <- p + labs (subtitle = paste (title1, "=", title2))
+##     }
     
-    return (p)
-}
-
-
-biplot.var <- function (obj, ...) {
-    UseMethod ("biplot.var")
-}
-biplot.var.data.cube <- function (dc, x.dim, y.dim, var.name = NULL) {
-    x.dim <- deparse (substitute (x.dim))
-    y.dim <- deparse (substitute (y.dim))
-    
-    var.name <- deparse (substitute (var.name))
-    if (var.name == "NULL")
-        var.name <- dc$var.names[1]
-    
-    biplot.var_(dc, x.dim, y.dim, var.name = var.name)
-}
+##     return (p)
+## }
 
 
 
