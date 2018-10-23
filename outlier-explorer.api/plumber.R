@@ -1,6 +1,6 @@
 library ('magrittr')
 
-source ('../data.cube.R')
+source ('../src/data.cube.R')
 
 data <- data.frame()
 
