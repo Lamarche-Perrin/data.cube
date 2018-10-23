@@ -64,44 +64,40 @@ outliers <- function (data=NULL, dataset=NULL, param=NULL) {
 
     ## Load dataset
     if (! is.null (dataset)) {
-        dc <- paste ('../data/', dataset, '.csv', sep='') %>%
-            read.csv (stringsAsFactors=FALSE) %>%
-            as.data.cube ()
+        data <- paste ('../data/', dataset, '.csv', sep='') %>%
+            read.csv (stringsAsFactors=FALSE)
+        dc <- data %>% as.data.cube_(dim = names(data) [1:(length(data)-1)], var = names(data) [length(data)])
     } else {
         if (is.null (data)) { data <- data.frame () }
-        dc <- as.data.cube (data)
+        dc <- data %>% as.data.cube_(dim = names(data) [1:(length(data)-1)], var = names(data) [length(data)])
     }
     
     ## Select dimensions
     dims <- c()
-    elems <- list()
     for (index in 1:nrow(param$select)) {
         dim <- as.list (param$select[index,])
         dims <- append (dims, dim$dim)
         if (dim$select == 'some') {
-            if (! is.null (dim$list)) { elems[[dim$dim]] <- dim$list }
-            if (! is.na (dim$head)) { elems[[dim$dim]] <- dc$elem.names[[dim$dim]][dc$margins[[dim$dim]]$cells[[dim$dim]][order(-dc$margins[[dim$dim]]$data$obs)[1:dim$head]]] }
+            if (! is.null (dim$list[[1]])) { dc <- dc %>% select.elm_(dim$dim, elm.array = dim$list[[1]]) }
+            if (! is.na (dim$head)) { dc <- dc %>% select.elm_(dim$dim, top.nb = dim$head) }
         }
     }
-    if (length (elems) > 0) { dc <- select.elems (dc, elems) }
 
-    dims <- dc$dim.names [! dc$dim.names %in% dims]
-    if (length (dims) > 0) { dc <- remove.dims (dc, dims) }
-
-    ## Normalise data
-    dc <- compute.expected (dc, dims=param$normalise)
+    dc <- dc %>% select.dim_(dims)
 
     ## Compute outliers
-    dc <- compute.deviated (dc, type=param$stat.test$type)
-    dc <- compute.outliers (dc, threshold=param$stat.test$threshold)
-    
-    dc$data$display <- (dc$data$out == 1)
-    dc$data$rank <- rank (-dc$data$dev)
+    dc <- dc %>% compute.model_(dim = param$normalise, deviation.type = param$stat.test$type, deviation.threshold = param$stat.test$threshold)
 
     ## Return list
-    df <- as.data.frame (dc, display='display', rank='rank')
-    df$out <- NULL
+    df <- dc %>% as.data.frame () %>% filter (outlier == 1) %>% select (-outlier) %>% arrange (desc (deviation))
 
     return (df)
 }
 
+
+## dataset <- "guardian.2016"
+## param <- list()
+## param$select <- data.frame (dim = c ("topic", "week"), select = c ("some", "all"), head = c (5, NA), stringsAsFactors = FALSE)
+## param$normalise <- c("topic","time")
+## param$stat.test <- list (type = "poisson", threshold = 3)
+## param
