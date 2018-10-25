@@ -8,6 +8,8 @@ curl -s http://localhost:8000/tools/format_comments -d '{"data":[{"article_tags"
 curl -s http://localhost:8000/tools/outliers -d '{"data":[{"user":"168820","topic":"keyword1","time":"2018-02-23","obs":0.5},{"user":"168820","topic":"keyword2","time":"2018-02-23","obs":0.5},{"user":"985002","topic":"keyword1","time":"2018-02-22","obs":0.5},{"user":"985002","topic":"keyword2","time":"2018-02-22","obs":0.5}],"dataset":null,"param":{"select":[{"dim":"user","select":"some","list":["985002"]},{"dim":"topic","select":"some","head":1},{"dim":"time","select":"all"}],"normalise":["topic","time"],"stat.test":{"type":"poisson","threshold":1}}}'
 
 ## Compare API results to APP results
+curl -s http://localhost:8000/tools/outliers -d '{"dataset":"guardian.small","param":{"select":[{"dim":"topic","select":"some","head":5},{"dim":"week","select":"all"}],"normalise":["topic","week"],"stat.test":{"type":"poisson","threshold":0.5}}}'
+
 curl -s http://localhost:8000/tools/outliers -d '{"dataset":"guardian.2016","param":{"select":[{"dim":"topic","select":"some","head":5},{"dim":"week","select":"all"}],"normalise":["topic","week"],"stat.test":{"type":"poisson","threshold":1}}}'
 
 
@@ -19,4 +21,6 @@ echo '{"data":'$(< guardian.raw)',"param":{"time":{"reference":"comment","resolu
 
 echo '{"data":'$(< guardian.cube)',"param":{"select":[{"dim":"time","select":"all"},{"dim":"topic","select":"some","head":5},{"dim":"user","select":"some","head":30}],"normalise":["topic","time"],"stat.test":{"type":"poisson","threshold":1}}}' | curl -s https://penelope.huma-num.fr/tools/outliers -d @- > guardian.outliers
 
-curl -H "Content-Type: application/json" -s http://penelope.huma-num.fr/tools/outliers -d '{"dataset":"guardian.2016","param":{"select":[{"dim":"topic","select":"some","head":5},{"dim":"week","select":"all"}],"normalise":["topic","week"],"stat.test":{"type":"poisson","threshold":1}}}'
+curl -s http://penelope.huma-num.fr/tools/outliers -d '{"dataset":"guardian.small","param":{"select":[{"dim":"topic","select":"some","head":5},{"dim":"week","select":"all"}],"normalise":["topic","week"],"stat.test":{"type":"poisson","threshold":0.5}}}'
+
+curl -s http://penelope.huma-num.fr/tools/outliers -d '{"dataset":"guardian.2016","param":{"select":[{"dim":"topic","select":"some","head":5},{"dim":"week","select":"all"}],"normalise":["topic","week"],"stat.test":{"type":"poisson","threshold":1}}}'
