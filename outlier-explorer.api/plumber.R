@@ -1,4 +1,5 @@
 library ('magrittr')
+library ('data.table')
 
 source ('../src/data.cube.R')
 
@@ -9,6 +10,7 @@ ping <- function () { return ("OK!"); }
 
 #' @post /tools/format_comments
 format_comments <- function (data, param=NULL) {
+    
     if (is.null (param)) { param <- list() }
     if (is.null (param$time)) { param$time <- list() }
     if (is.null (param$time$reference)) { param$time$reference <- 'article' }
@@ -55,7 +57,7 @@ format_comments <- function (data, param=NULL) {
         }
     }
 
-    aggregate (obs ~ user + topic + time, data=df, FUN=sum)
+    as.data.table (df) [, .(obs = sum (obs)), by = list (user, time, topic)]
 }
 
 
