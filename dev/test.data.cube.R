@@ -122,6 +122,7 @@ dca <- dc %>% arrange.elm (b, name) %>% arrange.elm (c (b, c), desc (v4)) %>% ar
 
 
 ## Basic properties
+source ('../src/data.cube.R')
 
 dim.names (dc)
 dim.nb (dc)
@@ -148,7 +149,7 @@ dca %>% compute.var (c (a, b, c), v8, v4) %>% str
 dca %>% compute.var (c (b, c), var1 = v1, var8 = v8, var10 = v10) %>% str
 
 
-## Arrange elements
+## Arrange elements 1
 source ('../src/data.cube.R')
 
 dca %>% str
@@ -171,15 +172,19 @@ dc %>% arrange.elm (a, v6, desc (v2)) %>% as.data.frame
 dc %>% select.var (v1) %>% select.dim (a, b) %>% as.data.frame
 dc %>% select.var (v1) %>% select.dim (a, b) %>% arrange.elm (c (a, b), v1) %>% as.data.frame
 dc %>% select.var (v1) %>% arrange.elm (c (a, b), v1) %>% as.data.frame
+dc %>% select.var (v1) %>% arrange.elm (c, name) %>% arrange.elm (c (a, b), v1) %>% as.data.frame
 dc %>% select.var (v1) %>% arrange.elm (c (a, b), v1) %>% arrange.elm (c, name) %>% as.data.frame
 
+
+## Arrange elements 2
 source ('../src/data.cube.R')
+
 dc %>% as.data.frame
 dc %>% as.data.frame (complete = TRUE) %>% print (n = Inf)
 dc %>% arrange.elm (a, name) %>% as.data.frame (complete = TRUE) %>% print (n = Inf)
-dc %>% arrange.elm (a, name) %>% arrange.elm (b, name) %>% as.data.frame (complete = TRUE) %>% print (n = Inf)
 dc %>% arrange.elm (b, name) %>% arrange.elm (a, name) %>% as.data.frame (complete = TRUE) %>% print (n = Inf)
-dc %>% arrange.elm (b, name) %>% arrange.elm (a, name) %>% reorder.dim (b, a) %>% as.data.frame (complete = TRUE) %>% print (n = Inf)
+dc %>% arrange.elm (a, name) %>% arrange.elm (b, name) %>% as.data.frame (complete = TRUE) %>% print (n = Inf)
+dc %>% arrange.elm (a, name) %>% arrange.elm (b, name) %>% reorder.dim (b, a) %>% as.data.frame (complete = TRUE) %>% print (n = Inf)
 
 dc %>% select.dim (a) %>% arrange.elm (a, v6) %>% as.data.frame (complete = TRUE) %>% print (n = Inf)
 dc %>% select.dim (a) %>% arrange.elm (a, v6, desc (v2)) %>% as.data.frame (complete = TRUE) %>% print (n = Inf)
@@ -188,7 +193,7 @@ dc %>% arrange.elm (a, v6, desc (v2)) %>% as.data.frame (complete = TRUE) %>% pr
 dc %>% select.var (v1) %>% select.dim (a, b) %>% as.data.frame (complete = TRUE) %>% print (n = Inf)
 dc %>% select.var (v1) %>% select.dim (a, b) %>% arrange.elm (c (a, b), v1) %>% as.data.frame (complete = TRUE) %>% print (n = Inf)
 dc %>% select.var (v1) %>% arrange.elm (c (a, b), v1) %>% as.data.frame (complete = TRUE) %>% print (n = Inf)
-dc %>% select.var (v1) %>% arrange.elm (c (a, b), v1) %>% arrange.elm (c, name) %>% as.data.frame (complete = TRUE) %>% print (n = Inf)
+dc %>% select.var (v1) %>% arrange.elm (c, name) %>% arrange.elm (c (a, b), v1) %>% as.data.frame (complete = TRUE) %>% print (n = Inf)
 
 
 ## Select data.plane
@@ -256,12 +261,12 @@ dc %>% filter.elm (c (a, b), v1 > 8) %>% str
 dc %>% filter.elm (c (a, b), v1 > 100) %>% str
 
 
-## Plot variables
+## Plot variables 1
 source ('../src/data.cube.R')
 
 dc %>% plot.var (v9)
-
 dc %>% plot.var (v1)
+
 dca <- dc %>% arrange.elm (c, name) %>% arrange.elm (b, name) %>% arrange.elm (a, name)
 dca %>% plot.var (v1)
 dca %>% arrange.elm (c (a, b, c), v1) %>% plot.var (v1)
@@ -286,6 +291,9 @@ dca %>% arrange.elm (b, v1) %>% plot.var (v1, sep.dim.names = c (b, c))
 dca %>% filter.elm (b, name == "b2") %>% plot.var (v1, sep.dim.names = c (b, c))
 
 
+## Plot variables 2
+source ('../src/data.cube.R')
+
 dca %>% plot.var (v1, type = "bar")
 dca %>% plot.var (v1, type = "line")
 dca %>% plot.var (v1, type = "point")
@@ -308,25 +316,27 @@ dca %>% plot.var (v1, sep.dim.names = c (b, c), type = "point")
 
 
 ## Compute expected values
+source ('../src/data.cube.R')
 
 dcb <- dca %>% select.var (v1) %>% select.dim (a, b)
+dcb %>% compute.var.model (c (a, b), v1) %>% as.data.frame
 dcb %>% compute.var.model (c (a, b), v1) %>% complete.elm (a, b) %>% as.data.frame
 dcb %>% complete.elm (a, b) %>% compute.var.model (c (a, b), v1) %>% as.data.frame
 
-dc %>% compute.var.model (c (a, b), v1) %>% select.dim (a, b) %>% as.data.frame
-dc %>% complete.elm (a, b) %>% compute.var.model (c (a, b), v1) %>% select.dim (a, b) %>% as.data.frame
-
 dc %>% compute.var.model (c (a, b), v1) %>% str
-dc %>% compute.var.model (c (a, b), v1) %>% select.dim (a, b) %>% as.data.frame
-dc %>% complete.elm (a, b) %>% compute.var.model (c (a, b), v1) %>% select.dim (a, b) %>% as.data.frame
+dc %>% select.dim (a, b) %>% compute.var.model (c (a, b), v1) %>% arrange.elm (c (a, b), desc (v1.deviation)) %>% as.data.frame
+dc %>% compute.var.model (c (a, b), v1) %>% select.dim (a, b) %>% arrange.elm (c (a, b), desc (v1.deviation)) %>% as.data.frame
+dc %>% complete.elm (a, b) %>% compute.var.model (c (a, b), v1) %>% select.dim (a, b) %>% arrange.elm (c (a, b), desc (v1.deviation)) %>% as.data.frame
 
 dc %>% compute.var.model (c (a, b), v1, b = v1) %>% str
 dc %>% compute.var.model (c (a, b), v1, b = v1) %>% select.dim (a, b) %>% as.data.frame
-dc %>% complete.elm (a, b) %>% compute.var.model (c (a, b), v1, b = v1) %>% select.dim (a, b) %>% as.data.frame
+dc %>%  select.dim (a, b) %>% compute.var.model (c (a, b), v1, b = v1) %>% as.data.frame
 
 dc %>% compute.var.model (c (a, b), v1, a = v2, b = v1) %>% str
 dc %>% compute.var.model (c (a, b), v1, a = v2, b = v1) %>% select.dim (a, b) %>% as.data.frame
-dc %>% complete.elm (a, b) %>% compute.var.model (c (a, b), v1, a = v2, b = v1) %>% select.dim (a, b) %>% as.data.frame
+dc %>% select.dim (a, b) %>% compute.var.model (c (a, b), v1, a = v2, b = v1) %>% as.data.frame
+
+
 
 
 dcb <- dcb %>% complete.elm (a, b) %>% compute.var.model (c (a, b), v1, a = v1, b = v1)
