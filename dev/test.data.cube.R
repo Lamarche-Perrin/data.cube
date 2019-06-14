@@ -25,12 +25,12 @@ test.dot.names (NULL)
 
 ## Import datasets
 
-df.123 <- read.csv ('../test/example.dim1.dim2.dim3.csv', stringsAsFactors=FALSE)
-df.12 <- read.csv ('../test/example.dim1.dim2.csv', stringsAsFactors=FALSE)
-df.23 <- read.csv ('../test/example.dim2.dim3.csv', stringsAsFactors=FALSE)
-df.1 <- read.csv ('../test/example.dim1.csv', stringsAsFactors=FALSE)
-df.2 <- read.csv ('../test/example.dim2.csv', stringsAsFactors=FALSE)
-df. <- read.csv ('../test/example.csv', stringsAsFactors=FALSE)
+df.123 <- read_csv ('../test/example.dim1.dim2.dim3.csv')
+df.12 <- read_csv ('../test/example.dim1.dim2.csv')
+df.23 <- read_csv ('../test/example.dim2.dim3.csv')
+df.1 <- read_csv ('../test/example.dim1.csv')
+df.2 <- read_csv ('../test/example.dim2.csv')
+df. <- read_csv ('../test/example.csv')
 
 head (df.123)
 head (df.12)
@@ -51,7 +51,7 @@ df.123 %>% as.data.cube (c (a = dim3, b = dim1, c = dim2), c (var1, var2)) %>% s
 df.123 %>% as.data.cube (c (c = dim3, dim1, dim2), c (var1, v2 = var2)) %>% str
 
 df.123 %>% as.data.cube (c (dim3, dim1, dim2), var1) %>% str
-df.123 %>% as.data.cube (c (dim3, dim1), c (var1, var2)) %>% str
+df.123 %>% as.data.cube (c (dim3, dim1), c (var1, var2)) %>% str # ERROR
 df.123 %>% as.data.cube (c (dim3, dim1, dim2)) %>% str
 
 df.1 %>% as.data.cube (dim1) %>% str
@@ -92,7 +92,13 @@ dc.123 %>% select.var (var2) %>% str
 dc.123 %>% select.var (var1) %>% join (dc.123 %>% select.var (var2)) %>% str
 
 dc <- join (dc.2, dc.1, dc.12, dc.23, dc.123, dc.)
+dc %>% as.data.frame %>% select (dim1, dim2, dim3, var1, var2) %>% arrange (dim1, dim2, dim3)
 str (dc)
+
+
+## Summary of data.cube
+source ('../src/data.cube.R')
+dc %>% summary
 
 
 ## Reorder data.cube
@@ -167,6 +173,7 @@ dc %>% arrange.elm (b, name) %>% arrange.elm (a, name) %>% as.data.frame
 
 dc %>% select.dim (a) %>% arrange.elm (a, v6) %>% as.data.frame
 dc %>% select.dim (a) %>% arrange.elm (a, v6, desc (v2)) %>% as.data.frame
+dc %>% select.dim (a) %>% arrange.elm (a, desc (v6), desc (v2)) %>% as.data.frame
 dc %>% arrange.elm (a, v6, desc (v2)) %>% as.data.frame
 
 dc %>% select.var (v1) %>% select.dim (a, b) %>% as.data.frame
@@ -243,8 +250,8 @@ dc %>% select.var (v3) %>% select.dim (b) %>% as.data.frame
 dc %>% select.var (v3) %>% filter.elm.indices (a, c (4, 3)) %>% select.dim (b) %>% as.data.frame
 dc %>% select.var (v3) %>% compute.var (b, v3) %>% filter.elm.indices (a, c (4, 3)) %>% select.dim (b) %>% as.data.frame
 
-dc %>% select.var (v3) %>% compute.var (b, v3) %>% as.data.frame
-dc %>% select.var (v3) %>% compute.var (c (a, b, c), v3) %>% as.data.frame
+dc %>% select.var (v3) %>% compute.var (b, v3) %>% as.data.frame # EMPTY
+dc %>% select.var (v3) %>% compute.var (c (a, b, c), v3) %>% as.data.frame # EMPTY
 dc %>% select.var (v3) %>% complete.elm (a, b, c) %>% as.data.frame
 dc %>% select.var (v3) %>% complete.elm (a, b, c) %>% compute.var (c (a, b, c), v3) %>% as.data.frame
 dc %>% select.var (v3) %>% select.dim (a, b) %>% as.data.frame
@@ -264,7 +271,8 @@ dc %>% filter.elm (c (a, b), v1 > 100) %>% str
 ## Plot variables 1
 source ('../src/data.cube.R')
 
-dc %>% plot.var (v9)
+str(dc)
+dc %>% plot.var (v9) # NULL
 dc %>% plot.var (v1)
 
 dca <- dc %>% arrange.elm (c, name) %>% arrange.elm (b, name) %>% arrange.elm (a, name)
@@ -306,9 +314,9 @@ dca %>% plot.var (v1, sep.dim.names = b, type = "bar")
 dca %>% plot.var (v1, sep.dim.names = b, type = "line")
 dca %>% plot.var (v1, sep.dim.names = b, type = "point")
 
-dca %>% plot.var (v1, v2, sep.dim.names = b, type = "bar")
-dca %>% plot.var (v1, v2, sep.dim.names = b, type = "line")
-dca %>% plot.var (v1, v2, sep.dim.names = b, type = "point")
+dca %>% plot.var (v1, v2, sep.dim.names = b, type = "bar") # ERROR
+dca %>% plot.var (v1, v2, sep.dim.names = b, type = "line") # ERROR
+dca %>% plot.var (v1, v2, sep.dim.names = b, type = "point") # ERROR
 
 dca %>% plot.var (v1, sep.dim.names = c (b, c), type = "bar")
 dca %>% plot.var (v1, sep.dim.names = c (b, c), type = "line")
@@ -318,7 +326,13 @@ dca %>% plot.var (v1, sep.dim.names = c (b, c), type = "point")
 ## Compute expected values
 source ('../src/data.cube.R')
 
+dc <- dc %>% arrange.elm (c, name) %>% arrange.elm (b, name) %>% arrange.elm (a, name)
+dc %>% compute.var.model (v1 (a * b * c) ~ v1 (a * b / b) * v2 (c)) %>% as.data.frame %>% glimpse
+
+
 dcb <- dca %>% select.var (v1) %>% select.dim (a, b)
+str (dcb)
+
 dcb %>% compute.var.model (c (a, b), v1) %>% as.data.frame
 dcb %>% compute.var.model (c (a, b), v1) %>% complete.elm (a, b) %>% as.data.frame
 dcb %>% complete.elm (a, b) %>% compute.var.model (c (a, b), v1) %>% as.data.frame
@@ -330,7 +344,7 @@ dc %>% complete.elm (a, b) %>% compute.var.model (c (a, b), v1) %>% select.dim (
 
 dc %>% compute.var.model (c (a, b), v1, b = v1) %>% str
 dc %>% compute.var.model (c (a, b), v1, b = v1) %>% select.dim (a, b) %>% as.data.frame
-dc %>%  select.dim (a, b) %>% compute.var.model (c (a, b), v1, b = v1) %>% as.data.frame
+dc %>% select.dim (a, b) %>% compute.var.model (c (a, b), v1, b = v1) %>% as.data.frame
 
 dc %>% compute.var.model (c (a, b), v1, a = v2, b = v1) %>% str
 dc %>% compute.var.model (c (a, b), v1, a = v2, b = v1) %>% select.dim (a, b) %>% as.data.frame
@@ -338,27 +352,6 @@ dc %>% select.dim (a, b) %>% compute.var.model (c (a, b), v1, a = v2, b = v1) %>
 
 
 
-
-dcb <- dcb %>% complete.elm (a, b) %>% compute.var.model (c (a, b), v1, a = v1, b = v1)
-
-source ('../src/data.cube.R')
-dc %>% str
-dcb %>% plot.var (v1, v1.model, type = "line")
-
-dim.names <- c ("a", "b")
-var.name <- "v1"
-
-dcb <- dcb %>% mutate.var_(dim.names, paste0 (var.name, ".deviation = ", var.name, " / v1.model"))
-dcb$var.NA[[paste0 (var.name, ".deviation")]] <- 1
-dcb %>% plot.var (v1.deviation, type = "bar")
-
-if (all (sapply (dcb$var.NA[c('v1','v1.deviation')], is.numeric))) {
-    NA.values <- unique (unlist (dcb$var.NA[c('v1','v1.deviation')]))
-    if (length (NA.values) == 1) {
-    }
-}
-
-identical
 # Model taking into account 'countries' marginals
 dc3 %>%
   compute.model (countries) %>%

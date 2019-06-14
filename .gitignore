@@ -9,7 +9,7 @@ inst/doc
 # TEMPORARY FILES
 *~
 *.backup*
-**/#*#
+**/*#
 **/.#*
 *.tar.gz
 

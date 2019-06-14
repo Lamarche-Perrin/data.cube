@@ -1,0 +1,38 @@
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(echo = TRUE)
+source ("render_toc.R")
+```
+
+## Table of Contents
+
+```{r toc, echo=FALSE} 
+render_toc("test.render_toc.Rmd")
+```
+
+# Writing
+
+## R Markdown
+
+This is an R Markdown document...
+
+```{r cars} 
+# This is not a header
+summary(cars)
+```
+
+## Regular Code
+
+```r
+# Regular markdown code (not run)
+plot(pressure)
+```
+
+# Plots
+
+## Including Plots {#plots-are-here .class-foo}
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE} 
+plot(pressure)
+```

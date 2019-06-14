@@ -1,0 +1,426 @@
+---
+title: "A Tutorial for the `data.cube` Library"
+author: "Robin Lamarche-Perrin"
+date: "June 2019"
+output:
+  html_document:
+    <!-- toc: true -->
+    <!-- toc_depth: 3 -->
+    <!-- number_sections: true -->
+    theme: united
+    highlight: tango
+---
+	
+`data.cube` is an R package for the exploration of multidimensional datasets and for the detection of statistical outliers within. It is mainly a tool for data exploration, allowing to have a first glance at it and to formulate research hypotheses to be later tested.
+
+The package defines a new data structure called `data.cube` that can be fed with a classical `data.frame` encoding a list of numeric observations described according to several categorical dimensions. For example, in the case of Twitter data, it can be the number of tweets (numeric observation) that have been published by a given user (first dimension) about a given topic (second dimension) at a given date (third dimension). The input `data.frame` hence takes the form of a list of quadruplets (user, topic, date, number of tweets).
+
+Statistical outliers can then be identified among the observations by first selecting some dimensions of interest, that is by subsetting or by aggregating the input dimensions. If needed, observations can also be normalised according to the marginal values along the selected dimensions, thus comparing the observed value to an expected value obtained by the uniform redistribution of the selected marginal values. Different statistical tests can then be chosen to measure the deviation between the observed and the expected values. The package finally allows to retrieve a list of positive outliers, that is observations that are significantly higher than expected.
+
+
+# Table of Contents
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set (echo = TRUE)
+source ("render_toc.R")
+```
+
+```{r toc, echo=FALSE} 
+render_toc ("data.cube.Rmd", toc_depth = 3)
+```
+
+
+# Installation
+
+The library is available on CRAN:
+
+```{r eval=FALSE}
+install.packages ('data.cube')
+```
+
+Its source code is available on GitHub: <https://github.com/Lamarche-Perrin/data.cube>
+
+# Authors and License
+
+This library has been developed by researchers of the [Complex Networks](http://www.complexnetworks.fr/) team, within the [Laboratoire d'informatique de Paris 6](https://www.lip6.fr/), for the [ODYCCEUS](https://www.odycceus.eu/) project, founded by the [European Commission FETPROACT 2016-2017 program](https://ec.europa.eu/research/participants/portal/desktop/en/opportunities/h2020/calls/h2020-fetproact-2016-2017.html) under grant 732942.
+
+Copyright © 2017-2019 Robin Lamarche-Perrin (<Robin.Lamarche-Perrin@lip6.fr>)
+
+`data.cube` is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. It is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GN  General Public License for more details. You should have received a copy of the GNU General Public License along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+
+
+# Getting Started
+
+This tutorial assumes that you are familiar with the most known R packages of the [`tidyverse`](https://www.tidyverse.org/), in particular `tibble` operations provided by [`dplyr`](https://dplyr.tidyverse.org/) and the forward-pipe operator `%>%` provided by [`magrittr`](https://magrittr.tidyverse.org/).
+
+
+## Downloading the dataset
+
+This tutorial presents a use case of the `data.cube` library on a quite simple dataset ([downloadable here](link)) referencing the citations of country names in press articles.
+This dataset has been extracted from the corpus of articles gathered by the [ANR GEOMEDIA Project](https://geomedia.hypotheses.org/).
+
+First, import the main file of this dataset as a `data.frame` (actually, as a `tibble`):
+
+```{r}
+library (readr)
+df <- read_csv ('data/articles.csv')
+head (df)
+```
+
+* First column `id_media` contains standardised identifiers of selected newspapers.
+* Second column `week` contains publication dates at the week level (date of the first day of the week at the `YYYY-MM-DD` format).
+* Third column `id_country` contains standardised identifiers of cited countries ([ISO 3166-1 alpha-3](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-3)).
+* Last column `article_nb` gives the corresponding number of articles, that is the number of articles published by `id_media` during `week` and citing `id_country`.
+
+For example, the third line of the dataset above indicates that the Venezuelan newspaper *El Universal* (`es_VEN_univer_int`) as published `9` articles talking about Libya (`LBY`) during the week starting on the 19th of May, 2014 (`2014-05-19`).
+Note that the indicated number of articles is not necessarily an integer value (see for example the first line) as an article simultaneously citing `n` countries is weighted by `1/n` and then distributed among `n` lines.
+
+
+## Loading the library
+
+First, load the library:
+```{r eval=FALSE}
+library (data.cube)
+```
+
+```{r include=FALSE}
+source ('../../src/data.cube.R')
+```
+
+## Building the cube with `as.data.cube`
+
+Function `as.data.cube` transforms a classical `data.frame` (or `tibble`) object into a `data.cube`, that is the data structure that will then be used by the library.
+One should specify which columns correspond to the cube's dimensions (in our case, the first three) and which columns correspond to the observed variables (in our case, the last one).
+Note that one might also rename these dimensions and variables when transforming the `data.frame` into a `data.cube`.
+
+
+```{r}
+geomedia <-
+    df %>%
+    as.data.cube (
+        dim.names = list (media = id_media, week, country = id_country),
+        var.names = list (articles = article_nb)
+    )
+```
+
+
+## What's in the cube with `summary`
+Function `summary` then prints a short summary of the data contained in the resulting structure.
+
+```{r}
+geomedia %>% summary
+```
+
+
+## Back to frame with `as.data.frame`
+
+Function `as.data.frame` transforms a `data.cube` object back into a `data.frame` object (actually, a `tibble`).
+
+```{r}
+geomedia %>% as.data.frame
+```
+
+
+
+# Unidimensional Exploration
+
+In this first section, we focus on the exploration of one dimension of the `data.cube`.
+Multidimensional exploration is demonstrated later.
+
+
+## Selecting one dimension with `select.dim`
+
+One first needs to select the dimension of interest using function `select.dim`.
+In this example, we focus on the dataset's temporal dimension, a.k.a. dimension `week`.
+
+
+```{r}
+geomedia %>%
+    select.dim (week) %>%
+    as.data.frame
+```
+
+The resulting `data.cube` consists in a unidimensional data structure
+where variable `articles` has been aggregated (summed) along dimensions `media` and `country`.
+The resulting `data.frame` hence gives the total number of published articles corresponding to each element of dimension `week`.
+
+
+## Arranging elements with `arrange.elm`
+
+Note that above, observations have no particular order.
+Function `arrange.elm` reorders elements of a given dimension according to one (or several) of their variables.
+For example, the lexicographic order of their `name` (standard variable created for each dimension when instantiating the `data.cube`) which happens to also be the chronological order.
+
+```{r}
+geomedia %>%
+    select.dim (week) %>%
+    arrange.elm (week, name) %>%
+    as.data.frame
+```
+
+## Plotting variables with `plot.var`
+
+Function `plot.var` then plots a variable.
+Note that it returns a `ggplot` object that can hence be modified using classical tools of the visualisation library.
+For example, one can use function `theme` to vertically display x-axis labels.
+
+```{r}
+geomedia %>%
+    select.dim (week) %>%
+    arrange.elm (week, name) %>%
+    plot.var (articles) +
+    theme (axis.text.x = element_text (angle = 90, size = 6))
+```
+
+Several plot types are available: `bar` (above), `line` (below), and `point`.
+
+```{r}
+geomedia %>%
+    select.dim (week) %>%
+    arrange.elm (week, name) %>%
+    plot.var (articles, type = "line") +
+    theme (axis.text.x = element_text (angle = 90, size = 6))
+```
+
+
+## Filtering elements with `filter.elm` and `top_n.elm`
+
+Note that some observations in the plot above are surprisingly low.
+(They actually correspond to technical incidents during data collection.)
+
+Function `top_n.elm` only keeps the elements of a dimension that have the highest (or the lowest) value according to a variable.
+We here plot the 10 weeks in the data that have the lowest number of published article (note the `-` in argument `n`).
+
+```{r}
+geomedia %>%
+    select.dim (week) %>%
+    top_n.elm (week, articles, n = -10) %>%
+    arrange.elm (week, articles) %>%
+    plot.var (articles) +
+    theme (axis.text.x = element_text (size = 6))
+```
+
+Function `filter.elm` only keeps the elements of a dimension that fit with some criteria expressed on variables.
+We can for example use it to remove such anomalous observations.
+
+```{r}
+geomedia %>%
+    select.dim (week) %>%
+    filter.elm (week, articles >= 2500) %>%
+    arrange.elm (week, name) %>%
+    plot.var (articles, type = "line") +
+    theme (axis.text.x = element_text (angle = 90, size = 6))
+```
+
+
+## Other examples of use
+
+Here are other examples of use of these simple operations, illustrated on the spatial dimension `country`.
+
+One can plot the number of articles associated with the top 20 countries (arranged in a decreasing order).
+
+```{r}
+geomedia %>%
+    select.dim (country) %>%
+    top_n.elm (country, articles, 20) %>%
+    arrange.elm (country, desc (articles)) %>%
+    plot.var (articles)
+```
+
+One can filter and arrange countries according to a given subset.
+
+```{r}
+G8 <- c ("USA", "JPN", "DEU", "FRA", "RUS", "GBR", "ITA", "CAN")
+geomedia %>%
+    select.dim (country) %>%
+    filter.elm (country, name %in% G8) %>%
+    arrange.elm (country, match (name, G8)) %>%
+    plot.var (articles)
+```
+
+
+
+# Multidimensional Exploration
+
+In this second section, we simultaneously deal with several dimensions.
+Multidimensional plotting of variables is then possible.
+
+
+## Selecting two dimensions with `select.dim`
+
+When selecting two dimensions (or more) with function `select.dim`, one ends up with a multidimensional representation of the corresponding variables.
+For example, in the code below, one selects dimensions `week` and `country` (in other words, dimension `media` is aggregated).
+Each observation hence gives the number of `articles` published during a given `week` and talking about a given `country`.
+
+```{r}
+geomedia %>%
+    select.dim (week, country) %>%
+    arrange.elm (country, name) %>%
+    arrange.elm (week, name) %>%
+    as.data.frame
+```
+
+## Plotting bidimensional variables with argument `sep.dim.names` of `plot.var`
+
+In order to plot variable `articles` according to the two selected dimensions, one can use argument `sep.dim.names` of function `plot.var` to indicate which one of the two dimensions should be used to separate the data.
+
+```{r}
+geomedia %>%
+    select.dim (week, country) %>%
+    arrange.elm (week, name) %>%
+    filter.elm (country, name %in% c ("USA", "FRA", "DEU")) %>%
+    plot.var (articles, sep.dim.names = country, type = "line") +
+    theme (axis.text.x = element_text (angle = 90, size = 6))
+```
+
+In this context, using a point-plot (instead of a line-plot) can be useful to separate a dimension with many elements.
+(Note that, below, we also use `filter.elm` on `week` to only plot data for year 2014.)
+
+```{r}
+geomedia %>%
+    select.dim (week, country) %>%
+    filter.elm (week, format (name, "%Y") == "2014") %>%
+    arrange.elm (week, name) %>%
+    top_n.elm (country, articles, 20) %>%
+    arrange.elm (country, desc (articles)) %>%
+    plot.var (articles, sep.dim.names = country, type = "point") +
+    theme (axis.text.x = element_text (angle = 90, size = 6))
+```
+
+
+## Plotting multidimensional variables
+
+
+It is also possible to separate the data according to several dimensions (with not so many elements) at the same time in order to plot multidimensional variables.
+For example, the plot below gives the temporal evolution of `articles` for 8 countries and 2 newspapers.
+
+```{r}
+geomedia %>%
+    filter.elm (week, format (name, "%Y") == "2014") %>%
+    arrange.elm (week, name) %>%
+    top_n.elm (country, articles, 8) %>%
+    arrange.elm (country, desc (articles)) %>%
+    filter.elm (media, name %in% c ("fr_FRA_lmonde_int", "en_GBR_guardi_int")) %>%
+    plot.var (articles, sep.dim.names = list (country, media), type = "point") +
+    theme (axis.text.x = element_text (angle = 90, size = 6))
+```
+
+
+
+## 5. FINDING OUTLIERS
+
+## 5.1. Data preparation
+
+geomedia3 <-
+  geomedia %>%
+  select.dim (week, country) %>%
+  select.elm (country, c("USA","RUS","FRA","ITA","JPN")) %>%
+  arrange.elm (week, country)
+
+
+## 5.2. Compute a simple model (taking into account the global popularity of country)
+
+# Raw observations
+geomedia3 %>% plot.obs (sep.dim = country, type = "line")
+
+# Raw model
+geomedia3 %>%
+  compute.model () %>%
+  plot.obs (model, sep.dim = country, type = "line")
+
+# Model taking into account 'country' marginals
+geomedia3 %>%
+  compute.model (country) %>%
+  plot.obs (model, sep.dim = country, type = "line")
+
+# Ratio between observed values and expected values
+geomedia3 %>%
+  compute.model (country) %>%
+  plot.obs (ratio, sep.dim = country)
+
+
+## 5.3. Compute a more complete model (also taking into account the global activity through time)
+
+geomedia3 %>% select.dim (week) %>% plot.var (articles)
+
+geomedia3 %>%
+  compute.model (country, week) %>%
+  plot.obs (ratio, sep.dim = country)
+
+
+## 5.4. Compute significativity of 
+
+geomedia3 %>%
+  compute.model (country, week, deviation.type = 'poisson') %>%
+  plot.obs (deviation, sep.dim = country)
+
+geomedia3 %>%
+  compute.model (country, week, deviation.type = 'poisson') %>%
+  plot.outlier ()
+
+geomedia %>%
+  select.dim (country, week) %>%
+  compute.model (country, week, deviation.type = 'poisson') %>%
+  plot.outlier ()
+
+geomedia %>%
+  select.dim (country, week) %>%
+  compute.model (country, week, deviation.type = 'poisson') %>%
+  filter.obs (articles >= 100) %>%
+  filter.obs (ratio >= 1) %>%
+  plot.outlier ()
+
+geomedia %>%
+  select.dim (newspapers, country) %>%
+  compute.model (country, newspapers, deviation.type = 'poisson') %>%
+  filter.obs (articles >= 100) %>%
+  filter.obs (ratio >= 1) %>%
+  plot.outlier ()
+
+geomedia %>%
+  select.dim (newspapers, week) %>%
+  compute.model (week, newspapers, deviation.type = 'poisson') %>%
+  filter.obs (articles >= 100) %>%
+  filter.obs (ratio >= 1) %>%
+  plot.outlier ()
+
+geomedia %>%
+  select.dim (newspapers, country) %>%
+  compute.model (country, newspapers, deviation.type = 'poisson') %>%
+  filter.obs (outlier == 1) %>%
+  arrange.obs (deviation) %>%
+  as.data.frame ()
+
+geomedia %>%
+  select.dim (newspapers, country) %>%
+  compute.model (country, newspapers, deviation.type = 'poisson') %>%
+  filter.obs (outlier == 1) %>%
+  arrange.obs (deviation) %>%
+  as.data.frame ()
+
+geomedia %>%
+  select.dim (newspapers, country) %>%
+  select.elm (country, top.nb = 10) %>%
+  select.elm (newspapers, top.nb = 5) %>%
+  compute.model (country, newspapers, deviation.type = 'poisson') %>%
+  biplot.obs (newspapers, country, deviation)
+
+elm.names (geomedia, week)
+
+geomedia %>%
+  select.dim (newspapers, country) %>%
+  select.elm (country, top.nb = 50) %>%
+  select.elm (newspapers, top.nb = 10) %>%
+  compute.model (country, newspapers, deviation.type = 'poisson') %>%
+  biplot.obs (newspapers, country)
+
+
+
+## Temporal outliers
+
+geomedia3 <-
+  geomedia %>%
+  select.elm (week, week.2014, suppress = TRUE) %>%
+  select.elm (country, G8)
+
