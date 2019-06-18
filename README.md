@@ -6,6 +6,12 @@ The package defines a new data structure called `data.cube` that can be fed with
 
 Statistical outliers can then be identified among the observations by first selecting some dimensions of interest, that is by subsetting or by aggregating the input dimensions. If needed, observations can also be normalised according to the marginal values along the selected dimensions, thus comparing the observed value to an expected value obtained by the uniform redistribution of the selected marginal values. Different statistical tests can then be chosen to measure the deviation between the observed and the expected values. The package finally allows to retrieve a list of positive outliers, that is observations that are significantly higher than expected.
 
+For more details regarding the formal grounds of this work, please refer to:
+
+Audrey Wilmet and Robin Lamarche-Perrin. Multidimensional Outlier Detection in Temporal Interaction Networks. Research Report, arXiv:1906.02541, June 2019.
+<https://arxiv.org/abs/1906.02541>
+
+
 ### Clone
 
 ```
