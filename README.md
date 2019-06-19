@@ -1,4 +1,4 @@
-# `data.cube`
+# `data.cube`: An R package for the easy processing of multidimensional data
 
 `data.cube` is an R package for the exploration of multidimensional datasets and for the detection of statistical outliers within. It is mainly a tool for data exploration, allowing to have a first glance at it and to formulate research hypotheses to be later tested.
 
