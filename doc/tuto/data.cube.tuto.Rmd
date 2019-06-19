@@ -4,9 +4,6 @@ author: "Robin Lamarche-Perrin"
 date: "June 2019"
 output:
   html_document:
-    <!-- toc: true -->
-    <!-- toc_depth: 3 -->
-    <!-- number_sections: true -->
     theme: united
     highlight: tango
 ---
@@ -26,7 +23,7 @@ source ("render_toc.R")
 ```
 
 ```{r toc, echo=FALSE} 
-render_toc ("data.cube.Rmd", toc_depth = 3)
+render_toc ("data.cube.tuto.Rmd", toc_depth = 3)
 ```
 
 
@@ -308,7 +305,104 @@ geomedia %>%
 
 
 
-## 5. FINDING OUTLIERS
+# Outlier Analysis
+
+
+One of the tools that the `data.cube` library offers deals with the detection of statistical outliers in multidimensional data.
+In this context, variables are interpreted as multidimensional [contingency tables](https://en.wikipedia.org/wiki/Contingency_table) from which multiple marginal counts can be extracted (depending on the selected dimensions).
+These marginals then allow for the design of multiple models of the observed variables, from which significant deviations are then interpreted as outliers.
+In this part of the tutorial, we show how functions `compute.var.model` and `plot.outliers` allow for the computation of such models and the visualisation of the resulting deviations.
+
+For more details regarding the formal ground of these functions, please refer to:
+*Audrey Wilmet and Robin Lamarche-Perrin. (2019). Multidimensional Outlier Detection in Temporal Interaction Networks.* [arXiv:1906.02541](https://arxiv.org/abs/1906.02541)
+
+
+## First example: Bidimensional outliers
+
+This first example focuses on the evolution over year 2014 of the number of articles citing the 5 following countries: USA, Russia, Spain, Italy, and Japan.
+
+```{r}
+geomedia_2014 <-
+	geomedia %>%
+	select.dim (week, country) %>%
+    filter.elm (week, format (name, "%Y") == "2014") %>%
+    arrange.elm (week, name)
+
+selected_countries <- c ("USA", "RUS", "ESP", "ITA", "JPN")
+
+geomedia_2014 %>%
+    filter.elm (country, name %in% selected_countries) %>%
+    plot.var (articles, sep.dim.names = country, type = "line") +
+    theme (axis.text.x = element_text (angle = 90, size = 6))
+```
+
+### Taking into account the average number of articles per country
+
+By plotting the distribution of these observations, one could define some king of "statistically expected" range of values and then identify outliers as unexpectedly high values.
+
+```{r}
+geomedia_2014 %>%
+    filter.elm (country, name %in% selected_countries) %>%
+    as.data.frame %>%
+    ggplot (aes (x = articles)) +    
+    geom_histogram (aes (y = ..density..), binwidth = 30, colour = "black", fill = "white") +
+    geom_density (alpha = 0.2, fill = "black")
+```
+
+Yet, one could also consider that each of the five selected country have its own expected range of values, depending on its "average media coverage" (average number of articles per day).
+
+```{r}
+geomedia_2014 %>%
+    filter.elm (country, name %in% selected_countries) %>%
+    as.data.frame %>%
+    ggplot (aes (x = articles, color = country, fill = country)) +
+    geom_histogram (aes (y = ..density..), binwidth = 30, alpha = 0.2, position = "dodge") +
+    geom_density (alpha = 0.2)
+```
+
+Hence, one could take into account these averaged values as an additional information to identify more specific outliers.
+
+
+```{r}
+geomedia_2014 %>%
+    filter.elm (country, name %in% selected_countries) %>%
+    compute.var.model (articles (week * country) ~ articles (country)) %>%
+    summary
+```
+
+```{r}
+geomedia_2014 %>%
+    compute.var.model (articles (week * country) ~ articles (country)) %>%
+    filter.elm (country, name %in% selected_countries) %>%
+    plot.var (articles.model, sep.dim.names = country, type = "line") +
+    theme (axis.text.x = element_text (angle = 90, size = 6))
+```
+
+```{r}
+geomedia_2014 %>%
+    compute.var.model (articles (week * country) ~ articles (country)) %>%
+    filter.elm (country, name %in% selected_countries) %>%
+    plot.var (articles.deviation, sep.dim.names = country, type = "bar") +
+    theme (axis.text.x = element_text (angle = 90, size = 6))
+```
+
+### Also taking into account the average number of articles per day
+
+```{r}
+geomedia_2014 %>%
+    select.dim (week) %>%
+    plot.var (articles, type = "line") +
+    theme (axis.text.x = element_text (angle = 90, size = 6))
+```
+	
+```{r}
+geomedia_2014 %>%
+    compute.var.model (articles (week * country) ~ articles (week) * articles (country)) %>%
+    filter.elm (country, name %in% selected_countries) %>%
+    plot.var (articles.deviation, sep.dim.names = country, type = "bar") +
+    theme (axis.text.x = element_text (angle = 90, size = 6))
+```
+
 
 ## 5.1. Data preparation
 
@@ -421,6 +515,6 @@ geomedia %>%
 
 geomedia3 <-
   geomedia %>%
-  select.elm (week, week.2014, suppress = TRUE) %>%
+  select.elm (week, week_2014, suppress = TRUE) %>%
   select.elm (country, G8)
 

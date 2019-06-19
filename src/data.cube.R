@@ -889,7 +889,7 @@ compute.var.model.data.cube <-
 compute.var.model_ <- function (obj, ...) { UseMethod ("compute.var.model_") }
 compute.var.model_.data.cube <-
     function (dc, formula) {
-
+        
         ## PARSE FORMULA
         compressed.formula <- formula %>% str_remove_all (" ")
         splited.formula <- compressed.formula %>% str_split ("~") %>% first
@@ -901,11 +901,17 @@ compute.var.model_.data.cube <-
         left.up.dim.names <- left.dim.names %>% lapply (function (x) {x[1]}) %>% str_split ("\\*")
         left.down.dim.names <- left.dim.names %>% lapply (function (x) {x[2]}) %>% str_split ("\\*") %>% lapply (function (x) {if (! is.na(x)) x})
 
-        right.formula <- splited.formula[2] %>% str_split ("\\*(?![^\\(]*\\))") %>% first %>% str_split ("[()]") %>% lapply (function (x) {x[x != ""]})
-        right.var.names <- right.formula %>% lapply (function (x) {x[1]})
-        right.dim.names <- right.formula %>% lapply (function (x) {x[2]}) %>% str_split ("/")
-        right.up.dim.names <- right.dim.names %>% lapply (function (x) {x[1]}) %>% str_split ("\\*")
-        right.down.dim.names <- right.dim.names %>% lapply (function (x) {x[2]}) %>% str_split ("\\*") %>% lapply (function (x) {if (! is.na(x)) x})
+        if (splited.formula[2] == "NULL") {
+            right.var.names <- list()
+            right.up.dim.names <- list()
+            right.down.dim.names <- list()
+        } else {
+            right.formula <- splited.formula[2] %>% str_split ("\\*(?![^\\(]*\\))") %>% first %>% str_split ("[()]") %>% lapply (function (x) {x[x != ""]})
+            right.var.names <- right.formula %>% lapply (function (x) {x[1]})
+            right.dim.names <- right.formula %>% lapply (function (x) {x[2]}) %>% str_split ("/")
+            right.up.dim.names <- right.dim.names %>% lapply (function (x) {x[1]}) %>% str_split ("\\*")
+            right.down.dim.names <- right.dim.names %>% lapply (function (x) {x[2]}) %>% str_split ("\\*") %>% lapply (function (x) {if (! is.na(x)) x})
+        }
 
         ## Check variables and dimensions
         for (var.name in left.var.names) { if (! (var.name == "NULL" || var.name %in% var.names (dc))) { stop (paste ("Variable", var.name, "not found")) } }
@@ -916,8 +922,11 @@ compute.var.model_.data.cube <-
         for (dim.name in right.up.dim.names) { if (! (is.null (dim.name) || dim.name == "NULL" || dim.name %in% dim.names (dc))) { stop (paste ("Dimension", dim.name, "not found")) } }
         for (dim.name in right.down.dim.names) { if (! (is.null (dim.name) || dim.name == "NULL" || dim.name %in% dim.names (dc))) { stop (paste ("Dimension", dim.name, "not found")) } }
 
-        left.dim.names <- lapply (seq_along (left.up.dim.names), function (n) { setdiff (left.up.dim.names[[n]], left.down.dim.names[[n]]) }) %>% unlist %>% sort
-        right.dim.names <- lapply (seq_along (right.up.dim.names), function (n) { setdiff (right.up.dim.names[[n]], right.down.dim.names[[n]]) }) %>% unlist %>% sort
+        left.dim.names <- lapply (seq_along (left.up.dim.names), function (n) { setdiff (left.up.dim.names[[n]], left.down.dim.names[[n]]) }) %>% unlist
+        right.dim.names <- c()
+        if (length (right.up.dim.names) > 0) {
+            right.dim.names <- lapply (seq_along (right.up.dim.names), function (n) { setdiff (right.up.dim.names[[n]], right.down.dim.names[[n]]) }) %>% unlist
+        }
         missing.dim.names <- left.dim.names %>% setdiff (right.dim.names)
 
         ## Adding missing variables
@@ -925,9 +934,9 @@ compute.var.model_.data.cube <-
         right.up.dim.names <- right.up.dim.names %>% append (as.list (missing.dim.names))
         right.down.dim.names <- right.down.dim.names %>% append (rep (list (NULL), length (missing.dim.names)))
 
-        right.dim.names <- lapply (seq_along (right.up.dim.names), function (n) { setdiff (right.up.dim.names[[n]], right.down.dim.names[[n]]) }) %>% unlist %>% sort
-
-        if (any (left.dim.names != right.dim.names)) {
+        right.dim.names <- lapply (seq_along (right.up.dim.names), function (n) { setdiff (right.up.dim.names[[n]], right.down.dim.names[[n]]) }) %>% unlist
+        
+        if (any (left.dim.names %>% sort != right.dim.names %>% sort)) {
             stop ("Problem with left-hand side and right-hand side dimensionalities")
         }
 
@@ -966,9 +975,12 @@ compute.var.model_.data.cube <-
         deviation.var.name <- paste0 (var.name, ".deviation")
 
         dc <- dc %>% compute.var_(character(0), var.name %>% setNames (paste0 (var.name, ".")))
-        model.var.mutate <- paste0 (model.var.name, " = ", var.name, ".")
 
+        base.var.name <- paste0 (var.name, ".")
+        model.var.mutate <- paste0 (model.var.name, " = ", base.var.name)
 
+        intermediary.var.names <- base.var.name
+        
         for (i in seq_along (right.var.names)) {
             current.var.name <- right.var.names[[i]]
             current.up.dim.names <- right.up.dim.names[[i]]
@@ -983,13 +995,16 @@ compute.var.model_.data.cube <-
                     compute.var_(current.down.dim.names, current.var.name %>% setNames (current.down.var.name))
 
                 model.var.mutate <- paste0 (model.var.mutate, " * ", current.up.var.name, " / ", current.down.var.name)
+                intermediary.var.names <- c (intermediary.var.names, current.up.var.name, current.down.var.name)
             } else {
                 current.dim.names <- current.up.dim.names %>% setdiff (current.down.dim.names)
                 for (current.dim.name in current.dim.names) {
                     current.var.name <- paste0 (current.dim.name, ".elm.nb")
                     current.var.mutate <- paste0 (current.var.name, " = nrow (plane (dc, '", current.dim.name, "'))")
                     dc <- dc %>% mutate.var_(current.dim.name, current.var.mutate)
+
                     model.var.mutate <- paste0 (model.var.mutate, " * 1 / ", current.var.name)
+                    intermediary.var.names <- c (intermediary.var.names, current.var.name)
                 }
             }
         }
@@ -999,6 +1014,10 @@ compute.var.model_.data.cube <-
 
         attr (vars (dc, model.var.name), "NA.value") <- NA
         attr (vars (dc, deviation.var.name), "NA.value") <- 1
+        
+        ## Remove intermediary variables
+        plane (dc, data.dim.names) <-
+            plane (dc, data.dim.names) %>% select (- one_of (intermediary.var.names))
 
         return (dc)
     }

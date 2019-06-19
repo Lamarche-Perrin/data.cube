@@ -120,49 +120,67 @@ geomedia %>%
 
 ## 5. FINDING OUTLIERS
 
-## 5.1. Data preparation
-
 source ('../../src/data.cube.R')
 
-geomedia_sample <-
-    geomedia %>%
-    select.dim (week, country) %>%
-    arrange.elm (week, name) %>%
-    filter.elm (country, name %in% c ("USA", "RUS", "FRA", "ITA", "JPN")) %>%
-    arrange.elm (country, desc (articles))
+geomedia_2014 <-
+	geomedia %>%
+	select.dim (week, country) %>%
+    filter.elm (week, format (name, "%Y") == "2014") %>%
+    arrange.elm (week, name)
+
+selected_countries <- c ("USA", "RUS", "ESP", "ITA", "JPN")
+
+geomedia_2014 %>%
+    filter.elm (country, name %in% selected_countries) %>%
+    plot.var (articles, sep.dim.names = country, type = "line") +
+    theme (axis.text.x = element_text (angle = 90, size = 6))
+
+geomedia_2014 %>%
+    filter.elm (country, name %in% selected_countries) %>%
+    as.data.frame %>%
+    ggplot (aes (x = articles)) +    
+    geom_histogram (aes (y = ..density..), binwidth = 30, colour = "black", fill = "white") +
+    geom_density (alpha = 0.2, fill = "black")
+
+geomedia_2014 %>%
+    filter.elm (country, name %in% selected_countries) %>%
+    as.data.frame %>%
+    ggplot (aes (x = articles, color = country, fill = country)) +
+    geom_histogram (aes (y = ..density..), binwidth = 30, alpha = 0.2, position = "dodge") +
+    geom_density (alpha = 0.2)
 
 
-## 5.2. Compute a simple model (taking into account the global popularity of country)
+    
+geomedia_2014 %>%
+    filter.elm (country, name %in% selected_countries) %>%
+    compute.var.model (articles (week * country) ~ articles (country)) %>%
+    summary
 
-                                        # Raw observations
-geomedia_sample %>%
-    plot.var (sep.dim.names = country, type = "line")
+geomedia_2014 %>%
+    compute.var.model (articles (week * country) ~ articles (country)) %>%
+    filter.elm (country, name %in% selected_countries) %>%
+    plot.var (articles.model, sep.dim.names = country, type = "line") +
+    theme (axis.text.x = element_text (angle = 90, size = 6))
 
-                                        # Raw model
-geomedia_sample %>%
-    compute.var.model (list (week, country), articles) %>%
-    as.data.frame
+geomedia_2014 %>%
+    compute.var.model (articles (week * country) ~ articles (country)) %>%
+    filter.elm (country, name %in% selected_countries) %>%
+    plot.var (articles.deviation, sep.dim.names = country, type = "bar") +
+    theme (axis.text.x = element_text (angle = 90, size = 6))
+	
+geomedia_2014 %>%
+    select.dim (week) %>%
+    plot.var (articles, type = "line") +
+    theme (axis.text.x = element_text (angle = 90, size = 6))
+	
+geomedia_2014 %>%
+    compute.var.model (articles (week * country) ~ articles (week) * articles (country)) %>%
+    filter.elm (country, name %in% selected_countries) %>%
+    plot.var (articles.deviation, sep.dim.names = country, type = "bar") +
+    theme (axis.text.x = element_text (angle = 90, size = 6))
 
-    plot.var (model, sep.dim.names = country, type = "line")
-
-                                        # Model taking into account 'country' marginals
-geomedia_sample %>%
-    compute.model (country) %>%
-    plot.var (model, sep.dim.names = country, type = "line")
-
-                                        # Ratio between observed values and expected values
-geomedia_sample %>%
-    compute.model (country) %>%
-    plot.var (ratio, sep.dim.names = country)
 
 
-## 5.3. Compute a more complete model (also taking into account the global activity through time)
-
-geomedia_sample %>% select.dim (week) %>% plot.var ()
-
-geomedia_sample %>%
-    compute.model (country, week) %>%
-    plot.var (ratio, sep.dim.names = country)
 
 
 ## 5.4. Compute significativity of 
