@@ -1,4 +1,4 @@
-# `data.cube`
+# `data.cube`: An R package for the easy processing of multidimensional data
 
 `data.cube` is an R package for the exploration of multidimensional datasets and for the detection of statistical outliers within. It is mainly a tool for data exploration, allowing to have a first glance at it and to formulate research hypotheses to be later tested.
 
@@ -51,6 +51,6 @@ This package has been developed by researchers of the [Complex Networks](http://
 
 ### License
 
-Copyright © 2017 Robin Lamarche-Perrin (<Robin.Lamarche-Perrin@lip6.fr>)
+Copyright © 2017-2019 Robin Lamarche-Perrin (<Robin.Lamarche-Perrin@lip6.fr>)
 
 `data.cube` is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. It is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GN  General Public License for more details. You should have received a copy of the GNU General Public License along with this program. If not, see <http://www.gnu.org/licenses/>.
