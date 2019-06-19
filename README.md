@@ -25,14 +25,14 @@ cd data.cube/
 Rscript install.packages.R
 ```
 
-Troubles installing `rgl` R package on Ubuntu?  
-See https://stackoverflow.com/questions/29478686/troubles-installing-rgl-on-ubuntu
+Troubles installing `rgl` package on Ubuntu?  
+See <https://stackoverflow.com/questions/29478686/troubles-installing-rgl-on-ubuntu>
 
 
 ### Getting started
 
 Here is a step-by-step tutorial illustrating the main library functionalities on a case study:
-https://lamarche-perrin.github.io/data.cube/doc/tuto/data.cube.tuto.html
+<https://lamarche-perrin.github.io/data.cube/doc/tuto/data.cube.tuto.html>
 
 
 ### Launch "Outlier Explorer" Application with `shiny`
@@ -42,7 +42,7 @@ cd data.cube/outlier-explorer.app/
 Rscript launch.api.R
 ```
 This application is currently hosted on the [Huma-Num](https://www.huma-num.fr/about-us) facility for digital humanities:  
-https://penelope.huma-num.fr/apps/data.cube/outlier-explorer.app/
+<https://penelope.huma-num.fr/apps/data.cube/outlier-explorer.app/>
 
 ### Launch "Outlier Explorer" Web Service with `plumber`
 
@@ -51,10 +51,10 @@ cd data.cube/outlier-explorer.api/
 Rscript launch.app.R
 ```
 This Web service is hosted on the [Huma-Num](https://www.huma-num.fr/about-us) facility for digital humanities:  
-https://penelope.huma-num.fr/tools/
+<https://penelope.huma-num.fr/tools/>
 
 Also see the API specifications on SwaggerHub:  
-https://app.swaggerhub.com/apis-docs/Lamarche-Perrin/outlier-explorer/1.0.1
+<https://app.swaggerhub.com/apis-docs/Lamarche-Perrin/outlier-explorer/1.0.1>
 
 
 ### Authors
