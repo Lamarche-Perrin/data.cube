@@ -28,6 +28,13 @@ Rscript install.packages.R
 Troubles installing `rgl` R package on Ubuntu?  
 See https://stackoverflow.com/questions/29478686/troubles-installing-rgl-on-ubuntu
 
+
+### Getting started
+
+Here is a step-by-step tutorial illustrating the main library functionalities on a case study:
+https://lamarche-perrin.github.io/data.cube/doc/tuto/data.cube.tuto.html
+
+
 ### Launch "Outlier Explorer" Application with `shiny`
 
 ```
@@ -57,6 +64,6 @@ This package has been developed by researchers of the [Complex Networks](http://
 
 ### License
 
-Copyright © 2017 Robin Lamarche-Perrin (<Robin.Lamarche-Perrin@lip6.fr>)
+Copyright © 2017-2019 Robin Lamarche-Perrin (<Robin.Lamarche-Perrin@lip6.fr>)
 
 `data.cube` is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. It is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GN  General Public License for more details. You should have received a copy of the GNU General Public License along with this program. If not, see <http://www.gnu.org/licenses/>.
