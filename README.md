@@ -50,11 +50,36 @@ This application is currently hosted on the [Huma-Num](https://www.huma-num.fr/a
 cd data.cube/outlier-explorer.api/
 Rscript launch.app.R
 ```
-This Web service is hosted on the [Huma-Num](https://www.huma-num.fr/about-us) facility for digital humanities:  
+See the API specifications on SwaggerHub:  
+<https://app.swaggerhub.com/apis-docs/Lamarche-Perrin/outlier-explorer/1.0.1>
+
+This Web service is also hosted on the [Huma-Num](https://www.huma-num.fr/about-us) facility for digital humanities:  
 <https://penelope.huma-num.fr/tools/>
 
-Also see the API specifications on SwaggerHub:  
-<https://app.swaggerhub.com/apis-docs/Lamarche-Perrin/outlier-explorer/1.0.1>
+##### Check connexion with the Web service
+```
+curl -s https://penelope.huma-num.fr/tools/ping
+```
+
+##### Find outliers in a preliminary stored Guardian dataset
+```
+curl -s https://penelope.huma-num.fr/tools/outliers -d '{"dataset": "guardian.2016", "param": {"select": [{"dim": "topic", "select": "some", "head": 5}, {"dim": "week", "select": "all"}], "normalise": ["topic", "week"], "stat.test": {"type": "poisson", "threshold": 1}}}'
+```
+
+##### Get Guardian data from www.fcg-net.org
+```
+curl -H "Content-Type: application/json" -s https://www.fcg-net.org/penelope/data/comment_structure -d '{"collection": "GuardianArticles", "start_date": "2017-01-01T00:00:00.000Z", "end_date": "2017-06-01T00:00:00.000Z"}' > guardian.raw
+```
+
+##### Reformat Guardian data
+```
+echo '{"data": '$(< guardian.raw)', "param": {"time": {"reference": "comment", "resolution": "day"}}}' | curl -s https://penelope.huma-num.fr/tools/format_comments -d @- > guardian.cube
+```
+
+##### Feed reformatted Guardian data to the Web Service
+```
+echo '{"data": '$(< guardian.cube)', "param": {"select": [{"dim": "time", "select": "all"}, {"dim": "topic", "select": "some", "head": 5}, {"dim": "user", "select": "some", "head": 30}], "normalise": ["topic", "time"], "stat.test": {"type": "poisson", "threshold": 1}}}' | curl -s https://penelope.huma-num.fr/tools/outliers -d @- > guardian.outliers
+```
 
 
 ### Authors
