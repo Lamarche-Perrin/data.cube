@@ -25,8 +25,15 @@ cd data.cube/
 Rscript install.packages.R
 ```
 
-Troubles installing `rgl` R package on Ubuntu?  
-See https://stackoverflow.com/questions/29478686/troubles-installing-rgl-on-ubuntu
+Troubles installing `rgl` package on Ubuntu?  
+See <https://stackoverflow.com/questions/29478686/troubles-installing-rgl-on-ubuntu>
+
+
+### Getting started
+
+Here is a step-by-step tutorial illustrating the main library functionalities on a case study:
+<https://lamarche-perrin.github.io/data.cube/doc/tuto/data.cube.tuto.html>
+
 
 ### Launch "Outlier Explorer" Application with `shiny`
 
@@ -35,7 +42,7 @@ cd data.cube/outlier-explorer.app/
 Rscript launch.api.R
 ```
 This application is currently hosted on the [Huma-Num](https://www.huma-num.fr/about-us) facility for digital humanities:  
-https://penelope.huma-num.fr/apps/data.cube/outlier-explorer.app/
+<https://penelope.huma-num.fr/apps/data.cube/outlier-explorer.app/>
 
 ### Launch "Outlier Explorer" Web Service with `plumber`
 
@@ -43,11 +50,36 @@ https://penelope.huma-num.fr/apps/data.cube/outlier-explorer.app/
 cd data.cube/outlier-explorer.api/
 Rscript launch.app.R
 ```
-This Web service is hosted on the [Huma-Num](https://www.huma-num.fr/about-us) facility for digital humanities:  
-https://penelope.huma-num.fr/tools/
+See the API specifications on SwaggerHub:  
+<https://app.swaggerhub.com/apis-docs/Lamarche-Perrin/outlier-explorer/1.0.1>
 
-Also see the API specifications on SwaggerHub:  
-https://app.swaggerhub.com/apis-docs/Lamarche-Perrin/outlier-explorer/1.0.1
+This Web service is also hosted on the [Huma-Num](https://www.huma-num.fr/about-us) facility for digital humanities:  
+<https://penelope.huma-num.fr/tools/>
+
+##### Check connexion with the Web service
+```
+curl -s https://penelope.huma-num.fr/tools/ping
+```
+
+##### Find outliers in a preliminary stored Guardian dataset
+```
+curl -s https://penelope.huma-num.fr/tools/outliers -d '{"dataset": "guardian.2016", "param": {"select": [{"dim": "topic", "select": "some", "head": 5}, {"dim": "week", "select": "all"}], "normalise": ["topic", "week"], "stat.test": {"type": "poisson", "threshold": 1}}}'
+```
+
+##### Get Guardian data from www.fcg-net.org
+```
+curl -H "Content-Type: application/json" -s https://www.fcg-net.org/penelope/data/comment_structure -d '{"collection": "GuardianArticles", "start_date": "2017-01-01T00:00:00.000Z", "end_date": "2017-06-01T00:00:00.000Z"}' > guardian.raw
+```
+
+##### Reformat Guardian data
+```
+echo '{"data": '$(< guardian.raw)', "param": {"time": {"reference": "comment", "resolution": "day"}}}' | curl -s https://penelope.huma-num.fr/tools/format_comments -d @- > guardian.cube
+```
+
+##### Feed reformatted Guardian data to the Web Service
+```
+echo '{"data": '$(< guardian.cube)', "param": {"select": [{"dim": "time", "select": "all"}, {"dim": "topic", "select": "some", "head": 5}, {"dim": "user", "select": "some", "head": 30}], "normalise": ["topic", "time"], "stat.test": {"type": "poisson", "threshold": 1}}}' | curl -s https://penelope.huma-num.fr/tools/outliers -d @- > guardian.outliers
+```
 
 
 ### Authors
@@ -57,6 +89,6 @@ This package has been developed by researchers of the [Complex Networks](http://
 
 ### License
 
-Copyright © 2017 Robin Lamarche-Perrin (<Robin.Lamarche-Perrin@lip6.fr>)
+Copyright © 2017-2019 Robin Lamarche-Perrin (<Robin.Lamarche-Perrin@lip6.fr>)
 
 `data.cube` is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. It is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GN  General Public License for more details. You should have received a copy of the GNU General Public License along with this program. If not, see <http://www.gnu.org/licenses/>.
