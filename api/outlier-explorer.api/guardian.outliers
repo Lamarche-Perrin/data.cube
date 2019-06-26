@@ -1,1 +1,36 @@
-{"error":["500 - Internal server error"]}
+<!DOCTYPE html>
+<html lang="en-US" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <title>Page not found</title>
+  <style type="text/css">
+    body {
+      font-family: Helvetica, Arial, sans-serif;
+      background-color: #F5F5F5;
+    }
+    pre, tt, code, .code, #detail {
+      font-family: 'Consolas', 'Courier New', 'Courier', monospace;
+    }
+    h1 {
+      font-size: 40px;
+    }
+    #message {
+      font-size: 18px;
+    }
+    #detail {
+      font-size: 14px;
+    }
+    #console {
+      white-space: pre;
+      background-color: #2A2A2A;
+      color: #4F4;
+      padding: 12px;
+      border-radius: 4px;
+      overflow: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>Page not found</h1>
+    <p id="message">Sorry, but the page you requested doesn&#x27;t exist.</p>
+</body>
+</html>

@@ -404,117 +404,117 @@ geomedia_2014 %>%
 ```
 
 
-## 5.1. Data preparation
+<!-- ## 5.1. Data preparation -->
 
-geomedia3 <-
-  geomedia %>%
-  select.dim (week, country) %>%
-  select.elm (country, c("USA","RUS","FRA","ITA","JPN")) %>%
-  arrange.elm (week, country)
-
-
-## 5.2. Compute a simple model (taking into account the global popularity of country)
-
-# Raw observations
-geomedia3 %>% plot.obs (sep.dim = country, type = "line")
-
-# Raw model
-geomedia3 %>%
-  compute.model () %>%
-  plot.obs (model, sep.dim = country, type = "line")
-
-# Model taking into account 'country' marginals
-geomedia3 %>%
-  compute.model (country) %>%
-  plot.obs (model, sep.dim = country, type = "line")
-
-# Ratio between observed values and expected values
-geomedia3 %>%
-  compute.model (country) %>%
-  plot.obs (ratio, sep.dim = country)
+<!-- geomedia3 <- -->
+<!--   geomedia %>% -->
+<!--   select.dim (week, country) %>% -->
+<!--   select.elm (country, c("USA","RUS","FRA","ITA","JPN")) %>% -->
+<!--   arrange.elm (week, country) -->
 
 
-## 5.3. Compute a more complete model (also taking into account the global activity through time)
+<!-- ## 5.2. Compute a simple model (taking into account the global popularity of country) -->
 
-geomedia3 %>% select.dim (week) %>% plot.var (articles)
+<!-- # Raw observations -->
+<!-- geomedia3 %>% plot.obs (sep.dim = country, type = "line") -->
 
-geomedia3 %>%
-  compute.model (country, week) %>%
-  plot.obs (ratio, sep.dim = country)
+<!-- # Raw model -->
+<!-- geomedia3 %>% -->
+<!--   compute.model () %>% -->
+<!--   plot.obs (model, sep.dim = country, type = "line") -->
 
+<!-- # Model taking into account 'country' marginals -->
+<!-- geomedia3 %>% -->
+<!--   compute.model (country) %>% -->
+<!--   plot.obs (model, sep.dim = country, type = "line") -->
 
-## 5.4. Compute significativity of 
-
-geomedia3 %>%
-  compute.model (country, week, deviation.type = 'poisson') %>%
-  plot.obs (deviation, sep.dim = country)
-
-geomedia3 %>%
-  compute.model (country, week, deviation.type = 'poisson') %>%
-  plot.outlier ()
-
-geomedia %>%
-  select.dim (country, week) %>%
-  compute.model (country, week, deviation.type = 'poisson') %>%
-  plot.outlier ()
-
-geomedia %>%
-  select.dim (country, week) %>%
-  compute.model (country, week, deviation.type = 'poisson') %>%
-  filter.obs (articles >= 100) %>%
-  filter.obs (ratio >= 1) %>%
-  plot.outlier ()
-
-geomedia %>%
-  select.dim (newspapers, country) %>%
-  compute.model (country, newspapers, deviation.type = 'poisson') %>%
-  filter.obs (articles >= 100) %>%
-  filter.obs (ratio >= 1) %>%
-  plot.outlier ()
-
-geomedia %>%
-  select.dim (newspapers, week) %>%
-  compute.model (week, newspapers, deviation.type = 'poisson') %>%
-  filter.obs (articles >= 100) %>%
-  filter.obs (ratio >= 1) %>%
-  plot.outlier ()
-
-geomedia %>%
-  select.dim (newspapers, country) %>%
-  compute.model (country, newspapers, deviation.type = 'poisson') %>%
-  filter.obs (outlier == 1) %>%
-  arrange.obs (deviation) %>%
-  as.data.frame ()
-
-geomedia %>%
-  select.dim (newspapers, country) %>%
-  compute.model (country, newspapers, deviation.type = 'poisson') %>%
-  filter.obs (outlier == 1) %>%
-  arrange.obs (deviation) %>%
-  as.data.frame ()
-
-geomedia %>%
-  select.dim (newspapers, country) %>%
-  select.elm (country, top.nb = 10) %>%
-  select.elm (newspapers, top.nb = 5) %>%
-  compute.model (country, newspapers, deviation.type = 'poisson') %>%
-  biplot.obs (newspapers, country, deviation)
-
-elm.names (geomedia, week)
-
-geomedia %>%
-  select.dim (newspapers, country) %>%
-  select.elm (country, top.nb = 50) %>%
-  select.elm (newspapers, top.nb = 10) %>%
-  compute.model (country, newspapers, deviation.type = 'poisson') %>%
-  biplot.obs (newspapers, country)
+<!-- # Ratio between observed values and expected values -->
+<!-- geomedia3 %>% -->
+<!--   compute.model (country) %>% -->
+<!--   plot.obs (ratio, sep.dim = country) -->
 
 
+<!-- ## 5.3. Compute a more complete model (also taking into account the global activity through time) -->
 
-## Temporal outliers
+<!-- geomedia3 %>% select.dim (week) %>% plot.var (articles) -->
 
-geomedia3 <-
-  geomedia %>%
-  select.elm (week, week_2014, suppress = TRUE) %>%
-  select.elm (country, G8)
+<!-- geomedia3 %>% -->
+<!--   compute.model (country, week) %>% -->
+<!--   plot.obs (ratio, sep.dim = country) -->
+
+
+<!-- ## 5.4. Compute significativity of  -->
+
+<!-- geomedia3 %>% -->
+<!--   compute.model (country, week, deviation.type = 'poisson') %>% -->
+<!--   plot.obs (deviation, sep.dim = country) -->
+
+<!-- geomedia3 %>% -->
+<!--   compute.model (country, week, deviation.type = 'poisson') %>% -->
+<!--   plot.outlier () -->
+
+<!-- geomedia %>% -->
+<!--   select.dim (country, week) %>% -->
+<!--   compute.model (country, week, deviation.type = 'poisson') %>% -->
+<!--   plot.outlier () -->
+
+<!-- geomedia %>% -->
+<!--   select.dim (country, week) %>% -->
+<!--   compute.model (country, week, deviation.type = 'poisson') %>% -->
+<!--   filter.obs (articles >= 100) %>% -->
+<!--   filter.obs (ratio >= 1) %>% -->
+<!--   plot.outlier () -->
+
+<!-- geomedia %>% -->
+<!--   select.dim (newspapers, country) %>% -->
+<!--   compute.model (country, newspapers, deviation.type = 'poisson') %>% -->
+<!--   filter.obs (articles >= 100) %>% -->
+<!--   filter.obs (ratio >= 1) %>% -->
+<!--   plot.outlier () -->
+
+<!-- geomedia %>% -->
+<!--   select.dim (newspapers, week) %>% -->
+<!--   compute.model (week, newspapers, deviation.type = 'poisson') %>% -->
+<!--   filter.obs (articles >= 100) %>% -->
+<!--   filter.obs (ratio >= 1) %>% -->
+<!--   plot.outlier () -->
+
+<!-- geomedia %>% -->
+<!--   select.dim (newspapers, country) %>% -->
+<!--   compute.model (country, newspapers, deviation.type = 'poisson') %>% -->
+<!--   filter.obs (outlier == 1) %>% -->
+<!--   arrange.obs (deviation) %>% -->
+<!--   as.data.frame () -->
+
+<!-- geomedia %>% -->
+<!--   select.dim (newspapers, country) %>% -->
+<!--   compute.model (country, newspapers, deviation.type = 'poisson') %>% -->
+<!--   filter.obs (outlier == 1) %>% -->
+<!--   arrange.obs (deviation) %>% -->
+<!--   as.data.frame () -->
+
+<!-- geomedia %>% -->
+<!--   select.dim (newspapers, country) %>% -->
+<!--   select.elm (country, top.nb = 10) %>% -->
+<!--   select.elm (newspapers, top.nb = 5) %>% -->
+<!--   compute.model (country, newspapers, deviation.type = 'poisson') %>% -->
+<!--   biplot.obs (newspapers, country, deviation) -->
+
+<!-- elm.names (geomedia, week) -->
+
+<!-- geomedia %>% -->
+<!--   select.dim (newspapers, country) %>% -->
+<!--   select.elm (country, top.nb = 50) %>% -->
+<!--   select.elm (newspapers, top.nb = 10) %>% -->
+<!--   compute.model (country, newspapers, deviation.type = 'poisson') %>% -->
+<!--   biplot.obs (newspapers, country) -->
+
+
+
+<!-- ## Temporal outliers -->
+
+<!-- geomedia3 <- -->
+<!--   geomedia %>% -->
+<!--   select.elm (week, week_2014, suppress = TRUE) %>% -->
+<!--   select.elm (country, G8) -->
 
