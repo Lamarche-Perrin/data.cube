@@ -1,0 +1,71 @@
+# Getting Started
+
+This tutorial assumes that you are familiar with the most known R packages of the [`tidyverse`](https://www.tidyverse.org/), in particular `tibble` operations provided by [`dplyr`](https://dplyr.tidyverse.org/) and the forward-pipe operator `%>%` provided by [`magrittr`](https://magrittr.tidyverse.org/).
+
+
+## Downloading the dataset
+
+This tutorial presents a use case of the `data.cube` library on a quite simple dataset ([downloadable here](link)) referencing the citations of country names in press articles.
+This dataset has been extracted from the corpus of articles gathered by the [ANR GEOMEDIA Project](https://geomedia.hypotheses.org/).
+
+First, import the main file of this dataset as a `data.frame` (actually, as a `tibble`):
+
+```{r}
+library (readr)
+df <- read_csv ('data/articles.csv')
+head (df)
+```
+
+* First column `id_media` contains standardised identifiers of selected newspapers.
+* Second column `week` contains publication dates at the week level (date of the first day of the week at the `YYYY-MM-DD` format).
+* Third column `id_country` contains standardised identifiers of cited countries ([ISO 3166-1 alpha-3](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-3)).
+* Last column `article_nb` gives the corresponding number of articles, that is the number of articles published by `id_media` during `week` and citing `id_country`.
+
+For example, the third line of the dataset above indicates that the Venezuelan newspaper *El Universal* (`es_VEN_univer_int`) as published `9` articles talking about Libya (`LBY`) during the week starting on the 19th of May, 2014 (`2014-05-19`).
+Note that the indicated number of articles is not necessarily an integer value (see for example the first line) as an article simultaneously citing `n` countries is weighted by `1/n` and then distributed among `n` lines.
+
+
+## Loading the library
+
+First, load the library:
+```{r eval=FALSE}
+library (data.cube)
+```
+
+```{r include=FALSE}
+source ('../src/data.cube.R')
+```
+
+## Building the cube with `as.data.cube`
+
+Function `as.data.cube` transforms a classical `data.frame` (or `tibble`) object into a `data.cube`, that is the data structure that will then be used by the library.
+One should specify which columns correspond to the cube's dimensions (in our case, the first three) and which columns correspond to the observed variables (in our case, the last one).
+Note that one might also rename these dimensions and variables when transforming the `data.frame` into a `data.cube`.
+
+
+```{r}
+geomedia <-
+    df %>%
+    as.data.cube (
+        dim.names = list (media = id_media, week, country = id_country),
+        var.names = list (articles = article_nb)
+    )
+```
+
+
+## What's in the cube with `summary`
+Function `summary` then prints a short summary of the data contained in the resulting structure.
+
+```{r}
+geomedia %>% summary ()
+```
+
+
+## Back to frame with `as.data.frame`
+
+Function `as.data.frame` transforms a `data.cube` object back into a `data.frame` object (actually, a `tibble`).
+
+```{r}
+geomedia %>% as.data.frame ()
+```
+

@@ -1,0 +1,66 @@
+# Multidimensional Exploration
+
+In this second section, we simultaneously deal with several dimensions.
+Multidimensional plotting of variables is then possible.
+
+
+## Selecting two dimensions with `select.dim`
+
+When selecting two dimensions (or more) with function `select.dim`, one ends up with a multidimensional representation of the corresponding variables.
+For example, in the code below, one selects dimensions `week` and `country` (in other words, dimension `media` is aggregated).
+Each observation hence gives the number of `articles` published during a given `week` and talking about a given `country`.
+
+```{r}
+geomedia %>%
+    select.dim (week, country) %>%
+    arrange.elm (country, name) %>%
+    arrange.elm (week, name) %>%
+    as.data.frame ()
+```
+
+## Plotting bidimensional variables with argument `sep.dim.names` of `plot.var`
+
+In order to plot variable `articles` according to the two selected dimensions, one can use argument `sep.dim.names` of function `plot.var` to indicate which one of the two dimensions should be used to separate the data.
+
+```{r}
+geomedia %>%
+    select.dim (week, country) %>%
+    arrange.elm (week, name) %>%
+    filter.elm (country, name %in% c ("USA", "FRA", "DEU")) %>%
+    plot.var (articles, sep.dim.names = country, type = "line") +
+    theme (axis.text.x = element_text (angle = 90, size = 6))
+```
+
+In this context, using a point-plot (instead of a line-plot) can be useful to separate a dimension with many elements.
+(Note that, below, we also use `filter.elm` on `week` to only plot data for year 2014.)
+
+```{r}
+geomedia %>%
+    select.dim (week, country) %>%
+    filter.elm (week, format (name, "%Y") == "2014") %>%
+    arrange.elm (week, name) %>%
+    top_n.elm (country, articles, 20) %>%
+    arrange.elm (country, desc (articles)) %>%
+    plot.var (articles, sep.dim.names = country, type = "point") +
+    theme (axis.text.x = element_text (angle = 90, size = 6))
+```
+
+
+## Plotting multidimensional variables
+
+
+It is also possible to separate the data according to several dimensions (with not so many elements) at the same time in order to plot multidimensional variables.
+For example, the plot below gives the temporal evolution of `articles` for 8 countries and 2 newspapers.
+
+```{r}
+geomedia %>%
+    filter.elm (week, format (name, "%Y") == "2014") %>%
+    arrange.elm (week, name) %>%
+    top_n.elm (country, articles, 8) %>%
+    arrange.elm (country, desc (articles)) %>%
+    filter.elm (media, name %in% c ("fr_FRA_lmonde_int", "en_GBR_guardi_int")) %>%
+    plot.var (articles, sep.dim.names = list (country, media), type = "point") +
+    theme (axis.text.x = element_text (angle = 90, size = 6))
+```
+
+

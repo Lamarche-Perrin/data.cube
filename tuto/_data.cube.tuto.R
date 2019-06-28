@@ -39,7 +39,6 @@ geomedia %>%
     theme (axis.text.x = element_text (angle = 90, size = 6))
 
 
-## 2.4. Suppress elements in the data with 'remove.elm()'
 
 geomedia %>%
     select.dim (week) %>%
@@ -151,6 +150,7 @@ geomedia_2014 %>%
 
 
     
+source ('../../src/data.cube.R')
 geomedia_2014 %>%
     filter.elm (country, name %in% selected_countries) %>%
     compute.var.model (articles (week * country) ~ articles (country)) %>%

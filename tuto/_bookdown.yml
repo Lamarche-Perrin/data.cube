@@ -1,0 +1,11 @@
+--- 
+title: "A Tutorial for the `data.cube` Library"
+author: "Robin Lamarche-Perrin"
+date: "June 2019"
+site: "bookdown::bookdown_site"
+output:
+  bookdown::gitbook:
+    theme: united
+    highlight: tango
+documentclass: book
+---

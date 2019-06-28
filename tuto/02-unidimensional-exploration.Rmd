@@ -1,0 +1,115 @@
+# Unidimensional Exploration
+
+In this first section, we focus on the exploration of one dimension of the `data.cube`.
+Multidimensional exploration is demonstrated later.
+
+
+## Selecting one dimension with `select.dim`
+
+One first needs to select the dimension of interest using function `select.dim`.
+In this example, we focus on the dataset's temporal dimension, a.k.a. dimension `week`.
+
+
+```{r}
+geomedia %>%
+    select.dim (week) %>%
+    as.data.frame ()
+```
+
+The resulting `data.cube` consists in a unidimensional data structure
+where variable `articles` has been aggregated (summed) along dimensions `media` and `country`.
+The resulting `data.frame` hence gives the total number of published articles corresponding to each element of dimension `week`.
+
+
+## Arranging elements with `arrange.elm`
+
+Note that above, observations have no particular order.
+Function `arrange.elm` reorders elements of a given dimension according to one (or several) of their variables.
+For example, the lexicographic order of their `name` (standard variable created for each dimension when instantiating the `data.cube`) which happens to also be the chronological order.
+
+```{r}
+geomedia %>%
+    select.dim (week) %>%
+    arrange.elm (week, name) %>%
+    as.data.frame ()
+```
+
+## Plotting variables with `plot.var`
+
+Function `plot.var` then plots a variable.
+Note that it returns a `ggplot` object that can hence be modified using classical tools of the visualisation library.
+For example, one can use function `theme` to vertically display x-axis labels.
+
+```{r}
+geomedia %>%
+    select.dim (week) %>%
+    arrange.elm (week, name) %>%
+    plot.var (articles) +
+    theme (axis.text.x = element_text (angle = 90, size = 6))
+```
+
+Several plot types are available: `bar` (above), `line` (below), and `point`.
+
+```{r}
+geomedia %>%
+    select.dim (week) %>%
+    arrange.elm (week, name) %>%
+    plot.var (articles, type = "line") +
+    theme (axis.text.x = element_text (angle = 90, size = 6))
+```
+
+
+## Filtering elements with `filter.elm` and `top_n.elm`
+
+Note that some observations in the plot above are surprisingly low.
+(They actually correspond to technical incidents during data collection.)
+
+Function `top_n.elm` only keeps the elements of a dimension that have the highest (or the lowest) value according to a variable.
+We here plot the 10 weeks in the data that have the lowest number of published article (note the `-` in argument `n`).
+
+```{r}
+geomedia %>%
+    select.dim (week) %>%
+    top_n.elm (week, articles, n = -10) %>%
+    arrange.elm (week, articles) %>%
+    plot.var (articles) +
+    theme (axis.text.x = element_text (size = 6))
+```
+
+Function `filter.elm` only keeps the elements of a dimension that fit with some criteria expressed on variables.
+We can for example use it to remove such anomalous observations.
+
+```{r}
+geomedia %>%
+    select.dim (week) %>%
+    filter.elm (week, articles >= 2500) %>%
+    arrange.elm (week, name) %>%
+    plot.var (articles, type = "line") +
+    theme (axis.text.x = element_text (angle = 90, size = 6))
+```
+
+
+## Other examples of use
+
+Here are other examples of use of these simple operations, illustrated on the spatial dimension `country`.
+
+One can plot the number of articles associated with the top 20 countries (arranged in a decreasing order).
+
+```{r}
+geomedia %>%
+    select.dim (country) %>%
+    top_n.elm (country, articles, 20) %>%
+    arrange.elm (country, desc (articles)) %>%
+    plot.var (articles)
+```
+
+One can filter and arrange countries according to a given subset.
+
+```{r}
+G8 <- c ("USA", "JPN", "DEU", "FRA", "RUS", "GBR", "ITA", "CAN")
+geomedia %>%
+    select.dim (country) %>%
+    filter.elm (country, name %in% G8) %>%
+    arrange.elm (country, match (name, G8)) %>%
+    plot.var (articles)
+```

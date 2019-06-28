@@ -1008,16 +1008,15 @@ compute.var.model_.data.cube <-
                 }
             }
         }
-
+        
         deviation.var.mutate <- paste0 (deviation.var.name, " = ", data.var.name, " / ", model.var.name)
         dc <- dc %>% mutate.var_(data.dim.names, c (model.var.mutate, deviation.var.mutate))
 
-        attr (vars (dc, model.var.name), "NA.value") <- NA
+        attr (vars (dc, model.var.name), "NA.value") <- as.numeric (NA)
         attr (vars (dc, deviation.var.name), "NA.value") <- 1
         
         ## Remove intermediary variables
-        plane (dc, data.dim.names) <-
-            plane (dc, data.dim.names) %>% select (- one_of (intermediary.var.names))
+        dc <- dc %>% select.var (- one_of (intermediary.var.names))
 
         return (dc)
     }
@@ -1027,7 +1026,11 @@ compute.var.model_.data.cube <-
 select.dim <- function (obj, ...) { UseMethod ("select.dim") }
 select.dim.data.cube <-
     function (dc, ...) {
-        str.dim.names <- dot.names (enquos (...))
+        #str.dim.names <- dot.names (enquos (...))
+        dim.names <- dim.names (dc)
+        dim.names <- dim.names %>% setNames (dim.names)
+        str.dim.names <- tibble (!!!dim.names, .rows = 0) %>% select (...) %>% names
+
         dc %>% select.dim_(str.dim.names)
     }
 
@@ -1075,7 +1078,11 @@ select.dim_.data.cube <-
 select.var <- function (obj, ...) { UseMethod ("select.var") }
 select.var.data.cube <-
     function (dc, ...) {
-        str.var.names <- dot.names (enquos (...))
+        # str.var.names <- dot.names (enquos (...))
+        var.names <- var.names (dc)
+        var.names <- var.names %>% setNames (var.names)
+        str.var.names <- tibble (!!!var.names, .rows = 0) %>% select (...) %>% names
+        
         dc %>% select.var_(str.var.names)
     }
 

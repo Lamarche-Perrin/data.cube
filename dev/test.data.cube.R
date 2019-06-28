@@ -215,6 +215,9 @@ dc %>% select.dim () %>% str
 dc %>% select.dim (dim2 = b, dim1 = a) %>% str
 dc %>% select.dim (dim2 = b, a) %>% str
 
+dc %>% select.dim (-dim1) %>% str
+dc %>% select.dim (contains ("1")) %>% str
+
 dc %>% select.var (v1) %>% str
 dc %>% select.var (v9, v1) %>% str
 dc %>% select.var (v2, v1) %>% str
@@ -222,6 +225,10 @@ dc %>% select.var () %>% str
 
 dc %>% select.var (var9 = v9, var1 = v1) %>% str
 dc %>% select.var (v9, var1 = v1) %>% str
+
+dc %>% select.var (-var1, -var10) %>% str
+dc %>% select.var (contains ("1")) %>% str
+dc %>% select.var (contains ("1"), everything ()) %>% str
 
 
 ## Create new variable

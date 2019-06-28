@@ -106,7 +106,7 @@ geomedia <-
 Function `summary` then prints a short summary of the data contained in the resulting structure.
 
 ```{r}
-geomedia %>% summary
+geomedia %>% summary ()
 ```
 
 
@@ -115,7 +115,7 @@ geomedia %>% summary
 Function `as.data.frame` transforms a `data.cube` object back into a `data.frame` object (actually, a `tibble`).
 
 ```{r}
-geomedia %>% as.data.frame
+geomedia %>% as.data.frame ()
 ```
 
 
@@ -135,7 +135,7 @@ In this example, we focus on the dataset's temporal dimension, a.k.a. dimension 
 ```{r}
 geomedia %>%
     select.dim (week) %>%
-    as.data.frame
+    as.data.frame ()
 ```
 
 The resulting `data.cube` consists in a unidimensional data structure
@@ -153,7 +153,7 @@ For example, the lexicographic order of their `name` (standard variable created 
 geomedia %>%
     select.dim (week) %>%
     arrange.elm (week, name) %>%
-    as.data.frame
+    as.data.frame ()
 ```
 
 ## Plotting variables with `plot.var`
@@ -255,7 +255,7 @@ geomedia %>%
     select.dim (week, country) %>%
     arrange.elm (country, name) %>%
     arrange.elm (week, name) %>%
-    as.data.frame
+    as.data.frame ()
 ```
 
 ## Plotting bidimensional variables with argument `sep.dim.names` of `plot.var`
@@ -319,7 +319,7 @@ For more details regarding the formal ground of these functions, please refer to
 
 ## First example: Bidimensional outliers
 
-This first example focuses on the evolution over year 2014 of the number of articles citing the 5 following countries: USA, Russia, Spain, Italy, and Japan.
+This first example focuses on the evolution over year 2014 of the number of articles citing the 5 following countries: The United States, Russia, Spain, Italy, and Japan.
 
 ```{r}
 geomedia_2014 <-
@@ -336,39 +336,61 @@ geomedia_2014 %>%
     theme (axis.text.x = element_text (angle = 90, size = 6))
 ```
 
-### Taking into account the average number of articles per country
+### Taking into account the expected number of articles for each country
 
-By plotting the distribution of these observations, one could define some king of "statistically expected" range of values and then identify outliers as unexpectedly high values.
+By plotting the distribution of all these observations, one could define some king of "statistically expected" range of values and then identify outliers as unexpectedly high (or unexpectedly low) values.
+In the plot below, one could for example grossly characterise the distribution as a Gaussian curve (values on the left) plus some positive outliers (values on the right).
 
 ```{r}
 geomedia_2014 %>%
     filter.elm (country, name %in% selected_countries) %>%
-    as.data.frame %>%
+    as.data.frame () %>%
     ggplot (aes (x = articles)) +    
     geom_histogram (aes (y = ..density..), binwidth = 30, colour = "black", fill = "white") +
     geom_density (alpha = 0.2, fill = "black")
 ```
 
-Yet, one could also consider that each of the five selected country have its own expected range of values, depending on its "average media coverage" (average number of articles per day).
+Yet, it seems that several Gaussian distributions are actually superimposed.
+One could hence recognise that each of the five selected country has its own expected range of values, depending on its usual "media coverage" (expected number of articles per week).
+In this sense, one could hence search for outliers within each of these five distributions independently.
 
 ```{r}
 geomedia_2014 %>%
     filter.elm (country, name %in% selected_countries) %>%
-    as.data.frame %>%
+    as.data.frame () %>%
     ggplot (aes (x = articles, color = country, fill = country)) +
     geom_histogram (aes (y = ..density..), binwidth = 30, alpha = 0.2, position = "dodge") +
     geom_density (alpha = 0.2)
 ```
 
-Hence, one could take into account these averaged values as an additional information to identify more specific outliers.
+To take into account these different ranges of values, another solution consists in normalising the observations by taking into account the expected "media coverage" of each country.
+Function `compute.var.model` aims at computing such normalisation models.
+
+This function take in argument a formula specifying the normalisation scheme that needs to be applied.
+In the example below, formula `articles (week * country) ~ articles (country)` indicates that we want to model variable `articles` associated to dimensions `week` and `country` (left-hand side) by taking into account its marginal total along dimension `country` (right-hand side).
+In other words, with this first model, the number of articles citing a given country during a given week is expected to be similar to *the average number of articles citing that country each week* (total number in the corpus divided by number of weeks).
 
 
 ```{r}
 geomedia_2014 %>%
     filter.elm (country, name %in% selected_countries) %>%
     compute.var.model (articles (week * country) ~ articles (country)) %>%
-    summary
+    summary ()
 ```
+
+Applying the input formula, function `compute.var.model` computed two new variables:
+
+* Variable `articles.model` is the aforementioned average number of articles for each country;
+
+* Variable `articles.deviation` provides a measure of deviation between the observed variable `article` and the model.
+By default, it simply is the ratio between the two variables.
+For example, `articles.deviation == 3` indicates that a given country has been three times more cited during a given week than usually.
+`articles.deviation == 0.5` indicates that it has been two times less cited.
+
+These computed variables can now be visualised.
+Let's first have a look at the model by plotting `articles.model`:
+It simply consists in the total number of articles, averaged among weeks, for each of the five countries.
+
 
 ```{r}
 geomedia_2014 %>%
@@ -378,6 +400,10 @@ geomedia_2014 %>%
     theme (axis.text.x = element_text (angle = 90, size = 6))
 ```
 
+We clearly see in the plot above that each of the five countries has a specific expected "media coverage" to which observations can be compared.
+To do so, we now plot variable `articles.deviation` that indicates the ratio between observed and expected values.
+
+
 ```{r}
 geomedia_2014 %>%
     compute.var.model (articles (week * country) ~ articles (country)) %>%
@@ -386,7 +412,12 @@ geomedia_2014 %>%
     theme (axis.text.x = element_text (angle = 90, size = 6))
 ```
 
-### Also taking into account the average number of articles per day
+This plot finally allows for the identification of outliers with respect to each country, relatively to its usual "media coverage".
+Values are centered on 1, above are positive outliers, below are negative outliers.
+
+
+
+### Also taking into account the expected number of articles for each week
 
 ```{r}
 geomedia_2014 %>%
@@ -403,6 +434,7 @@ geomedia_2014 %>%
     theme (axis.text.x = element_text (angle = 90, size = 6))
 ```
 
+Note that function `filter.elm` is applied after function `compute.var.model`.
 
 <!-- ## 5.1. Data preparation -->
 
