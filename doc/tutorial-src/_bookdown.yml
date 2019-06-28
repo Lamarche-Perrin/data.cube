@@ -8,4 +8,5 @@ output:
     theme: united
     highlight: tango
 documentclass: book
+output_dir: "../../tutorial"
 ---

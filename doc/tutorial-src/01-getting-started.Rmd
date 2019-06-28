@@ -33,7 +33,7 @@ library (data.cube)
 ```
 
 ```{r include=FALSE}
-source ('../src/data.cube.R')
+source ('../../src/data.cube.R')
 ```
 
 ## Building the cube with `as.data.cube`
