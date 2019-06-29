@@ -97,8 +97,8 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
       <nav role="navigation">
 
 <ul class="summary">
-<li class="chapter" data-level="" data-path="index.html"><a href="index.html"><i class="fa fa-check"></i>Introduction</a><ul>
-<li class="chapter" data-level="" data-path="index.html"><a href="index.html#installation"><i class="fa fa-check"></i>Installation</a></li>
+<li><a href="index.html#a-tutorial-for-the-data.cube-library">A Tutorial for the <code>data.cube</code> Library</a><ul>
+<li class="chapter" data-level="" data-path="index.html"><a href="index.html"><i class="fa fa-check"></i>Installation</a></li>
 <li class="chapter" data-level="" data-path="index.html"><a href="index.html#authors-and-license"><i class="fa fa-check"></i>Authors and License</a></li>
 </ul></li>
 <li class="chapter" data-level="1" data-path="getting-started.html"><a href="getting-started.html"><i class="fa fa-check"></i><b>1</b> Getting Started</a><ul>
@@ -124,6 +124,7 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 <li class="chapter" data-level="4.1" data-path="outlier-analysis.html"><a href="outlier-analysis.html#first-example-bidimensional-outliers"><i class="fa fa-check"></i><b>4.1</b> First example: Bidimensional outliers</a><ul>
 <li class="chapter" data-level="4.1.1" data-path="outlier-analysis.html"><a href="outlier-analysis.html#taking-into-account-the-expected-number-of-articles-for-each-country"><i class="fa fa-check"></i><b>4.1.1</b> Taking into account the expected number of articles for each country</a></li>
 <li class="chapter" data-level="4.1.2" data-path="outlier-analysis.html"><a href="outlier-analysis.html#also-taking-into-account-the-expected-number-of-articles-for-each-week"><i class="fa fa-check"></i><b>4.1.2</b> Also taking into account the expected number of articles for each week</a></li>
+<li class="chapter" data-level="4.1.3" data-path="outlier-analysis.html"><a href="outlier-analysis.html#significativity-of-deviations"><i class="fa fa-check"></i><b>4.1.3</b> Significativity of deviations</a></li>
 </ul></li>
 </ul></li>
 </ul>
@@ -145,8 +146,8 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
             <section class="normal" id="section-">
 <!--bookdown:title:end-->
 <!--bookdown:title:start-->
-<div id="introduction" class="section level1 unnumbered">
-<h1>Introduction</h1>
+<div id="a-tutorial-for-the-data.cube-library" class="section level1 unnumbered">
+<h1>A Tutorial for the <code>data.cube</code> Library</h1>
 <p><code>data.cube</code> is an R package for the exploration of multidimensional datasets and for the detection of statistical outliers within. It is mainly a tool for data exploration, allowing to have a first glance at it and to formulate research hypotheses to be later tested.</p>
 <p>The package defines a new data structure called <code>data.cube</code> that can be fed with a classical <code>data.frame</code> encoding a list of numeric observations described according to several categorical dimensions. For example, in the case of Twitter data, it can be the number of tweets (numeric observation) that have been published by a given user (first dimension) about a given topic (second dimension) at a given date (third dimension). The input <code>data.frame</code> hence takes the form of a list of quadruplets (user, topic, date, number of tweets).</p>
 <p>Statistical outliers can then be identified among the observations by first selecting some dimensions of interest, that is by subsetting or by aggregating the input dimensions. If needed, observations can also be normalised according to the marginal values along the selected dimensions, thus comparing the observed value to an expected value obtained by the uniform redistribution of the selected marginal values. Different statistical tests can then be chosen to measure the deviation between the observed and the expected values. The package finally allows to retrieve a list of positive outliers, that is observations that are significantly higher than expected.</p>
@@ -223,6 +224,19 @@ gitbook.start({
 });
 </script>
 
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    var src = "";
+    if (src === "" || src === "true") src = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML";
+    if (location.protocol !== "file:" && /^https?:/.test(src))
+      src = src.replace(/^https?:/, '');
+    script.src = src;
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
 </body>
 
 </html>

@@ -1,4 +1,4 @@
-# Introduction {-}
+# A Tutorial for the `data.cube` Library {-}
 
 `data.cube` is an R package for the exploration of multidimensional datasets and for the detection of statistical outliers within. It is mainly a tool for data exploration, allowing to have a first glance at it and to formulate research hypotheses to be later tested.
 

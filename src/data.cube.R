@@ -880,15 +880,15 @@ transmute.var_.data.cube <-
 
 compute.var.model <- function (obj, ...) { UseMethod ("compute.var.model") }
 compute.var.model.data.cube <-
-    function (dc, formula) {
+    function (dc, formula, deviation.type = "ratio") {
         str.formula <- deparse (substitute (formula))        
-        dc %>% compute.var.model_(str.formula)
+        dc %>% compute.var.model_(str.formula, deviation.type)
     }
 
 
 compute.var.model_ <- function (obj, ...) { UseMethod ("compute.var.model_") }
 compute.var.model_.data.cube <-
-    function (dc, formula) {
+    function (dc, formula, deviation.type = "ratio") {
         
         ## PARSE FORMULA
         compressed.formula <- formula %>% str_remove_all (" ")
@@ -969,10 +969,9 @@ compute.var.model_.data.cube <-
         ## COMPUTE MODEL
         var.name <- left.var.names[[1]]
         data.dim.names <- left.up.dim.names[[1]]
-
+        
         data.var.name <- var.name
         model.var.name <- paste0 (var.name, ".model")
-        deviation.var.name <- paste0 (var.name, ".deviation")
 
         dc <- dc %>% compute.var_(character(0), var.name %>% setNames (paste0 (var.name, ".")))
 
@@ -980,7 +979,8 @@ compute.var.model_.data.cube <-
         model.var.mutate <- paste0 (model.var.name, " = ", base.var.name)
 
         intermediary.var.names <- base.var.name
-        
+
+        ## TODO: check if intermediate variables are not computed several times
         for (i in seq_along (right.var.names)) {
             current.var.name <- right.var.names[[i]]
             current.up.dim.names <- right.up.dim.names[[i]]
@@ -1009,11 +1009,53 @@ compute.var.model_.data.cube <-
             }
         }
         
-        deviation.var.mutate <- paste0 (deviation.var.name, " = ", data.var.name, " / ", model.var.name)
-        dc <- dc %>% mutate.var_(data.dim.names, c (model.var.mutate, deviation.var.mutate))
+        dc <- dc %>% mutate.var_(data.dim.names, model.var.mutate)
 
-        attr (vars (dc, model.var.name), "NA.value") <- as.numeric (NA)
-        attr (vars (dc, deviation.var.name), "NA.value") <- 1
+        attr (vars (dc, model.var.name), "NA.value") <- 0 # as.numeric (NA)
+
+        ## Compute deviation
+        deviation.var.name <- paste0 (var.name, ".deviation")
+
+        if (deviation.type == "ratio") {
+            deviation.var.mutate <- paste0 (deviation.var.name, " = ", data.var.name, " / ", model.var.name)
+        }
+
+        if (deviation.type == "poisson") {
+            deviation.var.mutate <- paste0 (deviation.var.name, " = ifelse (", data.var.name, " < ", model.var.name, ", ppois (", data.var.name, ", ", model.var.name, ", lower.tail = TRUE, log.p = TRUE), - ppois (", data.var.name, ", ", model.var.name, ", lower.tail = FALSE, log.p = TRUE))")
+        }
+        
+        if (deviation.type == "KLdiv") {
+            deviation.var.mutate <- paste0 (deviation.var.name, " = ifelse (", data.var.name, " > 0, ", data.var.name, " / ", base.var.name, " * log2 (", data.var.name, " / ", model.var.name, "), 0)")
+        }
+        
+        if (deviation.type == "chi2") {
+            deviation.var.mutate <- paste0 (deviation.var.name, " = sign (", data.var.name, " - ", model.var.name, ") * (", data.var.name, " - ", model.var.name, ")^2 / ", model.var.name)
+        }
+
+        dc <- dc %>% mutate.var_(data.dim.names, deviation.var.mutate)
+        
+        if (deviation.type == "ratio") {
+            attr (vars (dc, deviation.var.name), "NA.value") <- 1
+        } else {
+            attr (vars (dc, deviation.var.name), "NA.value") <- 0
+        }
+        
+        ## Apply threshold
+        ## dev.mean <- mean (plane (dc, dc.name)$vars[["deviation"]])
+        ## dev.sd <- sd (plane (dc, dc.name)$vars[["deviation"]])
+        
+        ## if (is.na (dev.sd)) {
+        ##     df$outlier <-
+        ##         rep (0, length (plane (dc, dc.name)$vars[["deviation"]]))
+        ## }
+        ## else {
+        ##     plane (dc, dc.name)$vars[["outlier"]] <-
+        ##         findInterval (plane (dc, dc.name)$vars[["deviation"]],
+        ##                       dev.mean + dev.sd * deviation.threshold * c(-1, 1)) - 1
+        ## }
+        
+        ## attr (dc, "var.names") <- unique (append (var.names (dc), "outlier"))
+
         
         ## Remove intermediary variables
         dc <- dc %>% select.var (- one_of (intermediary.var.names))

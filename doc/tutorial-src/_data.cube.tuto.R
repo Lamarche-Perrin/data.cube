@@ -127,7 +127,7 @@ geomedia_2014 <-
     filter.elm (week, format (name, "%Y") == "2014") %>%
     arrange.elm (week, name)
 
-selected_countries <- c ("USA", "RUS", "ESP", "ITA", "JPN")
+selected_countries <- c ("USA", "RUS", "CHN", "SYR", "JPN")
 
 geomedia_2014 %>%
     filter.elm (country, name %in% selected_countries) %>%

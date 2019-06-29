@@ -12,7 +12,7 @@ For more details regarding the formal ground of these functions, please refer to
 
 ## First example: Bidimensional outliers
 
-This first example focuses on the evolution over year 2014 of the number of articles citing the 5 following countries: The United States, Russia, Spain, Italy, and Japan.
+This first example focuses on the evolution over year 2014 of the number of articles citing the 5 following countries: The United States, Russia, China, Syria, and Japan.
 
 ```{r}
 geomedia_2014 <-
@@ -21,7 +21,7 @@ geomedia_2014 <-
     filter.elm (week, format (name, "%Y") == "2014") %>%
     arrange.elm (week, name)
 
-selected_countries <- c ("USA", "RUS", "ESP", "ITA", "JPN")
+selected_countries <- c ("USA", "RUS", "CHN", "SYR", "JPN")
 
 geomedia_2014 %>%
     filter.elm (country, name %in% selected_countries) %>%
@@ -61,8 +61,12 @@ Function `compute.var.model` aims at computing such normalisation models.
 
 This function take in argument a formula specifying the normalisation scheme that needs to be applied.
 In the example below, formula `articles (week * country) ~ articles (country)` indicates that we want to model variable `articles` associated to dimensions `week` and `country` (left-hand side) by taking into account its marginal total along dimension `country` (right-hand side).
-In other words, with this first model, the number of articles citing a given country during a given week is expected to be similar to *the average number of articles citing that country each week* (total number in the corpus divided by number of weeks).
+In other words, with this first model, the number of articles citing a given country during a given week is expected to be similar to *the average number of articles citing that country each week*, that is *the total number of articles citing that country* divided by *the number of weeks*.
 
+Formally, given $w \in \texttt{week}$ and $c \in \texttt{country}$, we have
+$$\texttt{articles.model}(w,c) \quad = \quad \frac{\texttt{articles}(.,c)}{|\texttt{week}|} \text{,}$$
+where $\texttt{articles}(.,c)$ denotes the marginal total along dimension `country`:
+$$\texttt{articles}(.,c) \quad = \quad \sum_{w' \in \texttt{week}} {\texttt{articles}(w',c)} \text{.}$$
 
 ```{r}
 geomedia_2014 %>%
@@ -71,18 +75,16 @@ geomedia_2014 %>%
     summary ()
 ```
 
-Applying the input formula, function `compute.var.model` computed two new variables:
+We see that `compute.var.model` computed two new variables that have been added to the `data.cube`:
 
-* Variable `articles.model` is the aforementioned average number of articles for each country;
+* Variable `articles.model` is the average number of articles per week for each country (see above);
 
-* Variable `articles.deviation` provides a measure of deviation between the observed variable `article` and the model.
-By default, it simply is the ratio between the two variables.
-For example, `articles.deviation == 3` indicates that a given country has been three times more cited during a given week than usually.
-`articles.deviation == 0.5` indicates that it has been two times less cited.
+* Variable `articles.deviation` provides a measure of deviation between the observed variable `article` and the model `articles.model`.
+By default, it is the ratio between the two variables (see below for other options).
+For example, `articles.deviation == 3` indicates that a country has been three times more cited during a week than usually and `articles.deviation == 0.5` indicates that it has been two times less cited.
 
 These computed variables can now be visualised.
-Let's first have a look at the model by plotting `articles.model`:
-It simply consists in the total number of articles, averaged among weeks, for each of the five countries.
+Let's first have a look at the model itself by plotting `articles.model`.
 
 
 ```{r}
@@ -93,8 +95,9 @@ geomedia_2014 %>%
     theme (axis.text.x = element_text (angle = 90, size = 6))
 ```
 
-We clearly see in the plot above that each of the five countries has a specific expected "media coverage" to which observations can be compared.
-To do so, we now plot variable `articles.deviation` that indicates the ratio between observed and expected values.
+This plot simply consists in the average number of articles per week for each of the five countries.
+We clearly see here that they all have a different expected values to which observations can then be compared.
+To do so, we now plot variable `articles.deviation`, that is the ratio between observed and expected values.
 
 
 ```{r}
@@ -105,12 +108,16 @@ geomedia_2014 %>%
     theme (axis.text.x = element_text (angle = 90, size = 6))
 ```
 
-This plot finally allows for the identification of outliers with respect to each country, relatively to its usual "media coverage".
-Values are centered on 1, above are positive outliers, below are negative outliers.
+This plot finally allows for the identification of outliers for each country through time, relatively to their usual "media coverage".
+Values are centered on 1.
+Above this line are *positive* outliers (more cited than usual) and below are *negative* outliers (less cited than usual).
 
 
 
 ### Also taking into account the expected number of articles for each week
+
+We just saw that the average number of articles is not comparable from one country to another.
+Similarly, one could point out that the total number of articles is not constant over time.
 
 ```{r}
 geomedia_2014 %>%
@@ -118,7 +125,34 @@ geomedia_2014 %>%
     plot.var (articles, type = "line") +
     theme (axis.text.x = element_text (angle = 90, size = 6))
 ```
-	
+
+In particular, as we see in the plot above, the dataset we explore contains much less articles during the first weeks of 2014 than later during the year.
+(This is due to data collection issues.)
+As a result, it is less likely to observe outliers during that period from the simple fact that observations are almost always below the computed averages.
+Conversely, outliers that are identified at the end of the year are slightly overestimated as global activity is higher than average at that time.
+
+To compensate for these temporal variations, one can also include them in the computed model.
+In the plot below, formula `articles (week * country) ~ articles (country) * articles (week)` indicates that marginal totals are taken into account both for dimension `country` (as above) and for dimension `week`.
+The number of articles citing a given country during a given week is hence expected to be similar to *the total number of articles citing that country* multiplied by *the total number of articles published during that week* divided by *the total number of articles in the corpus*.
+
+Formally, given $w \in \texttt{week}$ and $c \in \texttt{country}$, we have
+$$\texttt{articles.model}(w,c) \quad = \quad \frac{\texttt{articles}(.,c) \; \texttt{articles}(w,.)}{\texttt{articles}(w,c)} \text{,}$$
+where $\texttt{articles}(w,.)$ denotes the marginal total along dimension `week` and $\texttt{articles}(.,.)$ denotes the grand total.
+It results a normalisation model that both takes into account the average "media coverage" of each country and the global temporal variations.
+
+
+First, the model:
+
+```{r}
+geomedia_2014 %>%
+    compute.var.model (articles (week * country) ~ articles (week) * articles (country)) %>%
+    filter.elm (country, name %in% selected_countries) %>%
+    plot.var (articles.model, sep.dim.names = country, type = "line") +
+    theme (axis.text.x = element_text (angle = 90, size = 6))
+```
+
+Second, the deviations:
+
 ```{r}
 geomedia_2014 %>%
     compute.var.model (articles (week * country) ~ articles (week) * articles (country)) %>%
@@ -127,4 +161,48 @@ geomedia_2014 %>%
     theme (axis.text.x = element_text (angle = 90, size = 6))
 ```
 
-Note that function `filter.elm` is applied after function `compute.var.model`.
+Contrary to the previous deviation plot, we can see here some outliers appearing during the first weeks of 2014, even though the global "media activity" on that period is lower than during the rest of the year.
+
+**Warning!**
+Note that, in the operation sequence above, function `compute.var.model` (computing the model) is called before function `filter.elm` (selecting the five countries of interest).
+Order is important!
+The normalisation model (and in particular the global "media activity") is here computed with respect to the full corpus, and not only with respect to the subset of countries.
+Filtering of elements is here applied after computing the model just to reduce the number of curves to be displayed in the plot.
+
+
+### Significativity of deviations
+
+Ratio between observed and expected values induce interpretation errors has it does not account for the statistical significativity of deviations.
+Indeed, with this basic measure, observing 2 articles when expecting 1 is considered as surprising as observing 200 when expecting 100.
+Yet, variations on small numbers can be the result of noisy data or randomness in the observed processes.
+
+Function `compute.var.model` hence proposes several measures to account for the significativity of deviations.
+To this end, argument `deviation.type` can take the following values:
+
+* `ratio`
+
+$$\texttt{var.deviation} \quad = \quad \frac{\texttt{var}}{\texttt{var.model}}$$
+
+* `chi2`
+
+$$\texttt{var.deviation} \quad = \quad \left\{
+  \begin{array}{l}
+    \hphantom{-} \displaystyle\frac{(\texttt{var} - \texttt{var.model})^2}{\texttt{var.model}}\\
+    \hspace{1em} \text{if } \texttt{var} \geq \texttt{var.model}\\[1ex]
+    - \displaystyle\frac{(\texttt{var} - \texttt{var.model})^2}{\texttt{var.model}}\\
+    \hspace{1em} \text{if } \texttt{var} \leq \texttt{var.model}
+  \end{array}\right.$$
+
+* `poisson`
+
+$$\texttt{var.deviation} \quad = \quad \left\{
+  \begin{array}{l}
+    \hphantom{-} \log\Pr (\texttt{var} \geq \text{Pois}(\texttt{var.model}))\\
+    \hspace{3em} \text{if } \texttt{var} \geq \texttt{var.model}\\[1ex]
+    - \log\Pr (\texttt{var} \leq \text{Pois}(\texttt{var.model}))\\
+    \hspace{3em} \text{if } \texttt{var} \leq \texttt{var.model}
+  \end{array}\right.$$
+
+* `KLdiv`
+
+$$\texttt{var.deviation} \quad = \quad \frac{\texttt{var}}{\sum{\texttt{var}}} \; \log_2 \left (\frac{\texttt{var}}{\texttt{var.model}} \right)$$
