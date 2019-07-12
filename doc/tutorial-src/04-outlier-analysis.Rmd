@@ -4,7 +4,7 @@
 One of the tools that the `data.cube` library offers deals with the detection of statistical outliers in multidimensional data.
 In this context, variables are interpreted as multidimensional [contingency tables](https://en.wikipedia.org/wiki/Contingency_table) from which multiple marginal counts can be extracted (depending on the selected dimensions).
 These marginals then allow for the design of multiple models of the observed variables, from which significant deviations are then interpreted as outliers.
-In this part of the tutorial, we show how functions `compute.var.model` and `plot.outliers` allow for the computation of such models and the visualisation of the resulting deviations.
+In this part of the tutorial, we show how functions `compute.var.model`, `compute.var.deviation`, `compute.var.outlier`, and `plot.var.outlier` allow for the computation of such models and the visualisation of the resulting deviations.
 
 For more details regarding the formal ground of these functions, please refer to:
 *Audrey Wilmet and Robin Lamarche-Perrin. (2019). Multidimensional Outlier Detection in Temporal Interaction Networks.* [arXiv:1906.02541](https://arxiv.org/abs/1906.02541)
@@ -56,11 +56,13 @@ geomedia_2014 %>%
     geom_density (alpha = 0.2)
 ```
 
+#### Compute model with `compute.var.model`
+
 To take into account these different ranges of values, another solution consists in normalising the observations by taking into account the expected "media coverage" of each country.
 Function `compute.var.model` aims at computing such normalisation models.
 
-This function take in argument a formula specifying the normalisation scheme that needs to be applied.
-In the example below, formula `articles (week * country) ~ articles (country)` indicates that we want to model variable `articles` associated to dimensions `week` and `country` (left-hand side) by taking into account its marginal total along dimension `country` (right-hand side).
+This function take in argument two formulas specifying the normalisation scheme that needs to be applied.
+In the example below, first formula `articles (week * country)` indicates that we want to model variable `articles` associated to dimensions `week` and `country` and second formula `articles (country)` indicates that the model in question should take into account the marginal total of this variable along dimension `country`.
 In other words, with this first model, the number of articles citing a given country during a given week is expected to be similar to *the average number of articles citing that country each week*, that is *the total number of articles citing that country* divided by *the number of weeks*.
 
 Formally, given $w \in \texttt{week}$ and $c \in \texttt{country}$, we have
@@ -71,42 +73,41 @@ $$\texttt{articles}(.,c) \quad = \quad \sum_{w' \in \texttt{week}} {\texttt{arti
 ```{r}
 geomedia_2014 %>%
     filter.elm (country, name %in% selected_countries) %>%
-    compute.var.model (articles (week * country) ~ articles (country)) %>%
+    compute.var.model (articles (week * country), articles (country)) %>%
     summary ()
 ```
 
-We see that `compute.var.model` computed two new variables that have been added to the `data.cube`:
-
-* Variable `articles.model` is the average number of articles per week for each country (see above);
-
-* Variable `articles.deviation` provides a measure of deviation between the observed variable `article` and the model `articles.model`.
-By default, it is the ratio between the two variables (see below for other options).
-For example, `articles.deviation == 3` indicates that a country has been three times more cited during a week than usually and `articles.deviation == 0.5` indicates that it has been two times less cited.
-
-These computed variables can now be visualised.
-Let's first have a look at the model itself by plotting `articles.model`.
+We see that `compute.var.model` computed a new variable that has been added to the `data.cube`:
+Variable `articles.model`, that is the average number of articles per week for each country (see above).
+Let's now visualise it with `plot.var`.
 
 
 ```{r}
 geomedia_2014 %>%
-    compute.var.model (articles (week * country) ~ articles (country)) %>%
+    compute.var.model (articles (week * country), articles (country)) %>%
     filter.elm (country, name %in% selected_countries) %>%
     plot.var (articles.model, sep.dim.names = country, type = "line") +
     theme (axis.text.x = element_text (angle = 90, size = 6))
 ```
 
 This plot simply consists in the average number of articles per week for each of the five countries.
-We clearly see here that they all have a different expected values to which observations can then be compared.
-To do so, we now plot variable `articles.deviation`, that is the ratio between observed and expected values.
+We clearly see here that they all have a different expected value to which observations can then be compared.
 
+#### Compute deviation with `compute.var.deviation`
+
+Function `compute.var.deviation` provides a measure of deviation between the observed variable `article` and the computed variable `articles.model`.
+It hence compute a third variable `articles.deviation` which is, by default, the ratio between the two variables, that is the ratio between observed and expected values (see below for other deviation measures).
 
 ```{r}
 geomedia_2014 %>%
-    compute.var.model (articles (week * country) ~ articles (country)) %>%
+    compute.var.model (articles (week * country), articles (country)) %>%
+    compute.var.deviation (articles (week * country)) %>%
     filter.elm (country, name %in% selected_countries) %>%
     plot.var (articles.deviation, sep.dim.names = country, type = "bar") +
     theme (axis.text.x = element_text (angle = 90, size = 6))
 ```
+
+Hence, in the plot above, `articles.deviation == 3` indicates that a country has been three times more cited during a week than usually, and `articles.deviation == 0.5` indicates that it has been two times less cited.
 
 This plot finally allows for the identification of outliers for each country through time, relatively to their usual "media coverage".
 Values are centered on 1.
@@ -132,7 +133,7 @@ As a result, it is less likely to observe outliers during that period from the s
 Conversely, outliers that are identified at the end of the year are slightly overestimated as global activity is higher than average at that time.
 
 To compensate for these temporal variations, one can also include them in the computed model.
-In the plot below, formula `articles (week * country) ~ articles (country) * articles (week)` indicates that marginal totals are taken into account both for dimension `country` (as above) and for dimension `week`.
+In the plot below, model formula `articles (country) * articles (week)` indicates that marginal totals are taken into account both for dimension `country` (as above) and for dimension `week`.
 The number of articles citing a given country during a given week is hence expected to be similar to *the total number of articles citing that country* multiplied by *the total number of articles published during that week* divided by *the total number of articles in the corpus*.
 
 Formally, given $w \in \texttt{week}$ and $c \in \texttt{country}$, we have
@@ -145,17 +146,18 @@ First, the model:
 
 ```{r}
 geomedia_2014 %>%
-    compute.var.model (articles (week * country) ~ articles (week) * articles (country)) %>%
+    compute.var.model (articles (week * country), articles (week) * articles (country)) %>%
     filter.elm (country, name %in% selected_countries) %>%
     plot.var (articles.model, sep.dim.names = country, type = "line") +
     theme (axis.text.x = element_text (angle = 90, size = 6))
 ```
 
-Second, the deviations:
+Second, the deviation:
 
 ```{r}
 geomedia_2014 %>%
-    compute.var.model (articles (week * country) ~ articles (week) * articles (country)) %>%
+    compute.var.model (articles (week * country), articles (week) * articles (country)) %>%
+    compute.var.deviation (articles (week * country)) %>%
     filter.elm (country, name %in% selected_countries) %>%
     plot.var (articles.deviation, sep.dim.names = country, type = "bar") +
     theme (axis.text.x = element_text (angle = 90, size = 6))
@@ -176,7 +178,7 @@ Ratio between observed and expected values induce interpretation errors has it d
 Indeed, with this basic measure, observing 2 articles when expecting 1 is considered as surprising as observing 200 when expecting 100.
 Yet, variations on small numbers can be the result of noisy data or randomness in the observed processes.
 
-Function `compute.var.model` hence proposes several measures to account for the significativity of deviations.
+Function `compute.var.deviation` hence proposes several measures to account for the significativity of deviations.
 To this end, argument `deviation.type` can take the following values:
 
 * `ratio`
@@ -206,3 +208,10 @@ $$\texttt{var.deviation} \quad = \quad \left\{
 * `KLdiv`
 
 $$\texttt{var.deviation} \quad = \quad \frac{\texttt{var}}{\sum{\texttt{var}}} \; \log_2 \left (\frac{\texttt{var}}{\texttt{var.model}} \right)$$
+
+
+## Plotting Outliers
+
+```{r}
+```
+

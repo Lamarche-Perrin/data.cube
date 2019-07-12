@@ -1,5 +1,15 @@
 rm (list = ls())
 
+
+## Test geomedia data
+source ('../src/data.cube.R')
+
+filename <- paste0 ("../data/geomedia.csv")
+df <- filename %>% read_csv
+dc <- df %>% as.data.cube_(df %>% names %>% head (-1))
+dc %>% select.dim () %>% compute.var.model_("article_nb () ~ NULL") %>% str
+
+
 ## Test primitives
 source ('../src/data.cube.R')
 
@@ -98,7 +108,9 @@ str (dc)
 
 ## Summary of data.cube
 source ('../src/data.cube.R')
-dc %>% summary
+
+dc %>% as.data.frame %>% attributes
+dc %>% select.dim %>% as.data.frame %>% attributes
 
 
 ## Reorder data.cube
@@ -117,12 +129,14 @@ dc %>% rename.var (v2 = var2, v5 = var5, v4=var4) %>% str
 dc %>% rename.dim (a = dim1, b = dim2, c = dim3) %>% str
 dc %>% rename.var (v1 = var1, v2 = var2, v3 = var3, v4 = var4, v5 = var5, v6 = var6, v7 = var7, v8 = var8, v9 = var9, v10 = var10) %>% str
 
+### FINAL DC ###
 dc <- dc %>%
     reorder.dim (dim1, dim2, dim3) %>%
     reorder.var (var1, var2, var3, var4, var5, var6, var7, var8, var9, var10) %>%
     rename.dim (a = dim1, b = dim2, c = dim3) %>%
     rename.var (v1 = var1, v2 = var2, v3 = var3, v4 = var4, v5 = var5, v6 = var6, v7 = var7, v8 = var8, v9 = var9, v10 = var10)
 str (dc)
+### FINAL DC ###
 
 dca <- dc %>% arrange.elm (b, name) %>% arrange.elm (c (b, c), desc (v4)) %>% arrange.elm (a, desc (name), v6)
 
@@ -140,6 +154,9 @@ var.nb (dc)
 ## Compute margins
 source ('../src/data.cube.R')
 
+dca %>% compute.var (c (a, b, c), v1) %>% str
+dca %>% compute.var (c (a, b, c), var1 = v1) %>% str
+
 dca %>% compute.var (c (b, a), v1) %>% str
 dca %>% compute.var (c (b, a), v2, v1) %>% str
 dca %>% compute.var (c (b, a), v2, var1 = v1) %>% str
@@ -153,6 +170,14 @@ dca %>% compute.var (c (c, a)) %>% str
 dca %>% compute.var (c (), v2, v3) %>% str
 dca %>% compute.var (c (a, b, c), v8, v4) %>% str
 dca %>% compute.var (c (b, c), var1 = v1, var8 = v8, var10 = v10) %>% str
+
+
+## Spread dimension
+source ('../src/data.cube.R')
+
+dc %>% spread.dim.to.vars (a) %>% str
+dc %>% spread.dim.to.vars (b) %>% str
+dc %>% spread.dim.to.vars %>% str
 
 
 ## Arrange elements 1
@@ -238,6 +263,9 @@ x <- 5
 dc %>% mutate.var (c (a, b, c), v11 = 1) %>% str
 dc %>% mutate.var (c (a, b, c), v11 = x) %>% str
 dc %>% mutate.var (c (a, b, c), v11 = v1 + v2) %>% str
+
+dc %>% mutate.var (c (), v11 = 1) %>% str
+dc %>% mutate.var (c (a, c), v11 = 1) %>% str
 
 dc %>% mutate.var (c (b, a), v11 = v1 + v2) %>% str
 dc %>% mutate.var (c (b, a), v11 = v1 + v2, v12 = ifelse (v3 == 'A', v11, NA)) %>% str
@@ -330,13 +358,64 @@ dca %>% plot.var (v1, sep.dim.names = c (b, c), type = "line")
 dca %>% plot.var (v1, sep.dim.names = c (b, c), type = "point")
 
 
+## Test variable formulae
+source ('../src/data.cube.R')
+
+parse.var.form (dc, "v1 (a * b * c)")
+parse.var.form (dc, "v1 (b * a * c / a)")
+parse.var.form (dc, "v1 (b * c / c) * v2 (a / a)")
+parse.var.form (dc, "v1 * v6")
+parse.var.form (dc, "v1 ()")
+
+parse.var.form (dc, "v1 (a * b * C)") # ERROR
+parse.var.form (dc, "V1 (a * b * c / B) * V1 (b)") # ERROR
+parse.var.form (dc, "v1 (a * b * c / c) * v1 (b / c)") # ERROR
+
+parse.var.form (dc, NULL)
+parse.var.form (dc, "NULL (a * b)")
+parse.var.form (dc, "NULL (a) * NULL (b)")
+parse.var.form (dc, "v1 (NULL)")
+parse.var.form (dc, "NULL (NULL)")
+
+
 ## Compute expected values
 source ('../src/data.cube.R')
 
 dc <- dc %>% arrange.elm (c, name) %>% arrange.elm (b, name) %>% arrange.elm (a, name)
-dc %>% compute.var.model (v1 (a * b * c) ~ v1 (a * b / b) * v2 (c)) %>% as.data.frame
+dc %>% compute.var.model (v1 (a * b * c), keep.inter.var = TRUE) %>% as.data.frame
+dc %>% compute.var.model (v1 (a * b * c), NULL) %>% as.data.frame
+dc %>% compute.var.model (v1 (a * b * c), v1 (a * b / b) * v2 (c)) %>% as.data.frame
 
-dc %>% compute.var.model (v1 (a * b * c) ~ v1 (a) * v1 (b) * v1 (c), deviation.type = "ratio") %>% as.data.frame
-dc %>% compute.var.model (v1 (a * b * c) ~ v1 (a) * v1 (b) * v1 (c), deviation.type = "poisson") %>% as.data.frame
-dc %>% compute.var.model (v1 (a * b * c) ~ v1 (a) * v1 (b) * v1 (c), deviation.type = "KLdiv") %>% as.data.frame
-dc %>% compute.var.model (v1 (a * b * c) ~ v1 (a) * v1 (b) * v1 (c), deviation.type = "chi2") %>% as.data.frame
+dc %>% compute.var.model (v1 (), v1 ()) %>% select.dim %>% as.data.frame
+dc %>% compute.var.model (v1 (), v2 ()) %>% select.dim %>% as.data.frame
+dc %>% compute.var.model (v1 (), NULL ()) %>% select.dim %>% as.data.frame
+dc %>% compute.var.model (v1 (), NULL) %>% select.dim %>% as.data.frame
+
+dc <- dc %>% compute.var.model (v1 (a * b * c), v1 (a) * v1 (b) * v1 (c))
+dc %>% compute.var.deviation (v1 (a * b * c), deviation.type = "ratio") %>% as.data.frame
+dc %>% compute.var.deviation (v1 (a * b * c), deviation.type = "poisson") %>% as.data.frame
+dc %>% compute.var.deviation (v1 (a * b * c), deviation.type = "KLdiv") %>% as.data.frame
+dc %>% compute.var.deviation (v1 (a * b * c), deviation.type = "chi2") %>% as.data.frame
+
+dc <- dc %>% compute.var.deviation (v1 (a * b * c), deviation.type = "poisson")
+dc %>% compute.var.outlier (v1 (a * b * c)) %>% as.data.frame
+
+
+## Plot outliers
+source ('../src/data.cube.R')
+
+dc <- dc %>% compute.var.outlier (v1 (a * b * c), outlier.threshold = c (-2, 2))
+dc %>% plot.var.outlier (v1 (a * b * c))
+
+
+dc %>%
+    select.var (v1.deviation) %>%
+    as.data.frame %>%
+    ggplot (aes (x = v1.deviation)) +
+    geom_histogram (
+        aes (y = ..count..)
+        # bins = 100,
+        # color = "black",
+        # fill = "blue",
+        # alpha = 0.3
+    )

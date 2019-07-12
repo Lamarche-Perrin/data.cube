@@ -3,7 +3,6 @@ df <- read_csv ('data/articles.csv')
 head (df)
 
 source ('../../src/data.cube.R')
-summary (geomedia)
 
 geomedia <-
     df %>%
@@ -153,17 +152,17 @@ geomedia_2014 %>%
 source ('../../src/data.cube.R')
 geomedia_2014 %>%
     filter.elm (country, name %in% selected_countries) %>%
-    compute.var.model (articles (week * country) ~ articles (country)) %>%
+    compute.var.model (articles (week * country), articles (country)) %>%
     summary
 
 geomedia_2014 %>%
-    compute.var.model (articles (week * country) ~ articles (country)) %>%
+    compute.var.model (articles (week * country), articles (country)) %>%
     filter.elm (country, name %in% selected_countries) %>%
     plot.var (articles.model, sep.dim.names = country, type = "line") +
     theme (axis.text.x = element_text (angle = 90, size = 6))
 
 geomedia_2014 %>%
-    compute.var.model (articles (week * country) ~ articles (country)) %>%
+    compute.var.model (articles (week * country), articles (country)) %>%
     filter.elm (country, name %in% selected_countries) %>%
     plot.var (articles.deviation, sep.dim.names = country, type = "bar") +
     theme (axis.text.x = element_text (angle = 90, size = 6))
@@ -174,11 +173,24 @@ geomedia_2014 %>%
     theme (axis.text.x = element_text (angle = 90, size = 6))
 	
 geomedia_2014 %>%
-    compute.var.model (articles (week * country) ~ articles (week) * articles (country)) %>%
+    compute.var.model (articles (week * country), articles (week) * articles (country)) %>%
+    compute.var.deviation (articles (week * country)) %>%
     filter.elm (country, name %in% selected_countries) %>%
     plot.var (articles.deviation, sep.dim.names = country, type = "bar") +
     theme (axis.text.x = element_text (angle = 90, size = 6))
 
+geomedia_2014 %>% str
+
+
+source ('../../src/data.cube.R')
+geomedia %>%
+    compute.var.model (articles (week * country), articles (week) * articles (country)) %>%
+    compute.var.deviation (articles (week * country), deviation.type = "chi2") %>%
+    compute.var.outlier (articles (week * country)) %>%
+    plot.var.outlier (articles (week * country))
+
+    plot.var (articles.deviation, sep.dim.names = country, type = "bar") +
+    theme (axis.text.x = element_text (angle = 90, size = 6))
 
 
 

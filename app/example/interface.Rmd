@@ -1,0 +1,127 @@
+---
+title: "Multidimensional Outlier Explorer" 
+output: 
+  flexdashboard::flex_dashboard:
+    css: bootstrap.css
+    social: [ "menu" ]
+    logo: OdycceusSymbolVerySmall.svg
+    
+runtime: shiny
+---
+
+
+
+```{r setup, include=FALSE}
+#### OBSERVATORY INTERFACE PREMISES ####
+knitr::opts_chunk$set(warning = TRUE)
+require(rmarkdown)
+require(markdown)
+require(knitr)
+require(shiny)
+require(shinyjs)
+require(flexdashboard)
+require(shinythemes)
+require(shinyWidgets)
+require(shinyhelper)
+require(htmltools)
+require(tidyverse)
+require(DT)
+require(base64enc) # fix for twitter oauth in shinyapps.io
+require(jsonlite)
+require(httr)
+require(plumber)
+require(future)
+future::plan(multiprocess)
+
+#RUN exampleAPI.R
+## RtweeetAPI = plumber::plumb(file= "apis/example/APIexample.R")  # Where the file describing the APIexample.R is file is located
+## future::future(RtweeetAPI$run(port=5685,host="127.0.0.1", swagger=TRUE))#run exampleAPI in another R session
+                # do other computationally expensive stuff here
+
+```
+
+
+
+Home
+=====================================
+<style>
+body {
+text-align: justify}
+</style>
+
+
+<center>
+<img src="OdycceusIntegratedSymbolMedium.svg" width=18%>
+</center>
+
+#### Welcome 
+
+
+
+
+Showcase 1 {data-navmenu="Showcases"}
+================================================================
+
+### Title Showcase 1
+
+
+
+
+Iframe Example {data-navmenu="Observatory"}
+===========================================================
+
+```{r iframe, include=TRUE}
+shinyApp(
+ui = {fluidPage(titlePanel("Causation Tracker"),
+ 
+                mainPanel(fluidRow(
+                  htmlOutput("Babel")
+                )
+                )
+)
+},
+function(input, output) {
+  output$Babel<- renderUI({tags$iframe(src="http://127.0.0.1:5000", frameborder="0", scrolling="yes", width="100%", height=700)})
+
+ }
+)
+```
+
+
+Shiny App Example {data-navmenu="Observatory"}
+===========================================================
+
+Column {.tabset}
+-----------------------------------------------------------------------
+
+### ShinyApp
+
+
+```{r app example, echo=FALSE}
+shiny::shinyAppDir("apps/example",
+  options = list(width = "100%", height = 800)
+)
+```
+
+### Tutorial for using app example 
+
+Dear internaut welcome to a shiny application developed as illustrative example for the penelope platform of the Odysseus project.
+<br>
+This Shiny application allows you to download and analyse Reddit data hrough a user friendly analysis pipeline.
+
+<!-- insert image of the process here -->
+[TODO]()
+
+<br>
+You can select the subreddit of the data to download through the query parameter (Subreddit:)
+<br>
+The data accessed through this Shiny APP will be downloaded from the endpoint of the  exampleAPI. 
+[TODO]()
+<br>
+
+
+About
+================================================================
+
+
+#### Title

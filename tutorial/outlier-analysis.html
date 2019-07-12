@@ -126,6 +126,7 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 <li class="chapter" data-level="4.1.2" data-path="outlier-analysis.html"><a href="outlier-analysis.html#also-taking-into-account-the-expected-number-of-articles-for-each-week"><i class="fa fa-check"></i><b>4.1.2</b> Also taking into account the expected number of articles for each week</a></li>
 <li class="chapter" data-level="4.1.3" data-path="outlier-analysis.html"><a href="outlier-analysis.html#significativity-of-deviations"><i class="fa fa-check"></i><b>4.1.3</b> Significativity of deviations</a></li>
 </ul></li>
+<li class="chapter" data-level="4.2" data-path="outlier-analysis.html"><a href="outlier-analysis.html#plotting-outliers"><i class="fa fa-check"></i><b>4.2</b> Plotting Outliers</a></li>
 </ul></li>
 </ul>
 
@@ -146,7 +147,7 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
             <section class="normal" id="section-">
 <div id="outlier-analysis" class="section level1">
 <h1><span class="header-section-number">4</span> Outlier Analysis</h1>
-<p>One of the tools that the <code>data.cube</code> library offers deals with the detection of statistical outliers in multidimensional data. In this context, variables are interpreted as multidimensional <a href="https://en.wikipedia.org/wiki/Contingency_table">contingency tables</a> from which multiple marginal counts can be extracted (depending on the selected dimensions). These marginals then allow for the design of multiple models of the observed variables, from which significant deviations are then interpreted as outliers. In this part of the tutorial, we show how functions <code>compute.var.model</code> and <code>plot.outliers</code> allow for the computation of such models and the visualisation of the resulting deviations.</p>
+<p>One of the tools that the <code>data.cube</code> library offers deals with the detection of statistical outliers in multidimensional data. In this context, variables are interpreted as multidimensional <a href="https://en.wikipedia.org/wiki/Contingency_table">contingency tables</a> from which multiple marginal counts can be extracted (depending on the selected dimensions). These marginals then allow for the design of multiple models of the observed variables, from which significant deviations are then interpreted as outliers. In this part of the tutorial, we show how functions <code>compute.var.model</code>, <code>compute.var.deviation</code>, <code>compute.var.outlier</code>, and <code>plot.var.outlier</code> allow for the computation of such models and the visualisation of the resulting deviations.</p>
 <p>For more details regarding the formal ground of these functions, please refer to: <em>Audrey Wilmet and Robin Lamarche-Perrin. (2019). Multidimensional Outlier Detection in Temporal Interaction Networks.</em> <a href="https://arxiv.org/abs/1906.02541">arXiv:1906.02541</a></p>
 <div id="first-example-bidimensional-outliers" class="section level2">
 <h2><span class="header-section-number">4.1</span> First example: Bidimensional outliers</h2>
@@ -182,15 +183,17 @@ geomedia_<span class="dv">2014</span> <span class="op">%&gt;%</span>
 <span class="st">    </span><span class="kw">geom_histogram</span> (<span class="kw">aes</span> (<span class="dt">y =</span> ..density..), <span class="dt">binwidth =</span> <span class="dv">30</span>, <span class="dt">alpha =</span> <span class="fl">0.2</span>, <span class="dt">position =</span> <span class="st">&quot;dodge&quot;</span>) <span class="op">+</span>
 <span class="st">    </span><span class="kw">geom_density</span> (<span class="dt">alpha =</span> <span class="fl">0.2</span>)</code></pre></div>
 <p><img src="_main_files/figure-html/unnamed-chunk-22-1.png" width="672" /></p>
+<div id="compute-model-with-compute.var.model" class="section level4">
+<h4><span class="header-section-number">4.1.1.1</span> Compute model with <code>compute.var.model</code></h4>
 <p>To take into account these different ranges of values, another solution consists in normalising the observations by taking into account the expected “media coverage” of each country. Function <code>compute.var.model</code> aims at computing such normalisation models.</p>
-<p>This function take in argument a formula specifying the normalisation scheme that needs to be applied. In the example below, formula <code>articles (week * country) ~ articles (country)</code> indicates that we want to model variable <code>articles</code> associated to dimensions <code>week</code> and <code>country</code> (left-hand side) by taking into account its marginal total along dimension <code>country</code> (right-hand side). In other words, with this first model, the number of articles citing a given country during a given week is expected to be similar to <em>the average number of articles citing that country each week</em>, that is <em>the total number of articles citing that country</em> divided by <em>the number of weeks</em>.</p>
+<p>This function take in argument two formulas specifying the normalisation scheme that needs to be applied. In the example below, first formula <code>articles (week * country)</code> indicates that we want to model variable <code>articles</code> associated to dimensions <code>week</code> and <code>country</code> and second formula <code>articles (country)</code> indicates that the model in question should take into account the marginal total of this variable along dimension <code>country</code>. In other words, with this first model, the number of articles citing a given country during a given week is expected to be similar to <em>the average number of articles citing that country each week</em>, that is <em>the total number of articles citing that country</em> divided by <em>the number of weeks</em>.</p>
 <p>Formally, given <span class="math inline">\(w \in \texttt{week}\)</span> and <span class="math inline">\(c \in \texttt{country}\)</span>, we have <span class="math display">\[\texttt{articles.model}(w,c) \quad = \quad \frac{\texttt{articles}(.,c)}{|\texttt{week}|} \text{,}\]</span> where <span class="math inline">\(\texttt{articles}(.,c)\)</span> denotes the marginal total along dimension <code>country</code>: <span class="math display">\[\texttt{articles}(.,c) \quad = \quad \sum_{w&#39; \in \texttt{week}} {\texttt{articles}(w&#39;,c)} \text{.}\]</span></p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">geomedia_<span class="dv">2014</span> <span class="op">%&gt;%</span>
 <span class="st">    </span><span class="kw">filter.elm</span> (country, name <span class="op">%in%</span><span class="st"> </span>selected_countries) <span class="op">%&gt;%</span>
-<span class="st">    </span><span class="kw">compute.var.model</span> (<span class="kw">articles</span> (week <span class="op">*</span><span class="st"> </span>country) <span class="op">~</span><span class="st"> </span><span class="kw">articles</span> (country)) <span class="op">%&gt;%</span>
+<span class="st">    </span><span class="kw">compute.var.model</span> (<span class="kw">articles</span> (week <span class="op">*</span><span class="st"> </span>country), <span class="kw">articles</span> (country)) <span class="op">%&gt;%</span>
 <span class="st">    </span><span class="kw">summary</span> ()</code></pre></div>
-<pre><code>## Computing model: articles (week * country) ~ articles (country) * NULL (week)</code></pre>
-<pre><code>## data.cube of 2 dimensions and 3 variables
+<pre><code>## Computing model &#39;articles (week * country) ~ articles (country) * NULL (week)&#39;</code></pre>
+<pre><code>## data.cube of 2 dimensions and 2 variables
 ## 
 ## -&gt; Dimension week
 ##  - Element number: 52
@@ -210,34 +213,32 @@ geomedia_<span class="dv">2014</span> <span class="op">%&gt;%</span>
 ## -&gt; Variable articles.model
 ##  - Dimensions:   week x country
 ##  - Class (type): numeric (double)
-##  - NA value:     num 0
-## 
-## -&gt; Variable articles.deviation
-##  - Dimensions:   week x country
-##  - Class (type): numeric (double)
-##  - NA value:     num 1</code></pre>
-<p>We see that <code>compute.var.model</code> computed two new variables that have been added to the <code>data.cube</code>:</p>
-<ul>
-<li><p>Variable <code>articles.model</code> is the average number of articles per week for each country (see above);</p></li>
-<li><p>Variable <code>articles.deviation</code> provides a measure of deviation between the observed variable <code>article</code> and the model <code>articles.model</code>. By default, it is the ratio between the two variables (see below for other options). For example, <code>articles.deviation == 3</code> indicates that a country has been three times more cited during a week than usually and <code>articles.deviation == 0.5</code> indicates that it has been two times less cited.</p></li>
-</ul>
-<p>These computed variables can now be visualised. Let’s first have a look at the model itself by plotting <code>articles.model</code>.</p>
+##  - NA value:     num 0</code></pre>
+<p>We see that <code>compute.var.model</code> computed a new variable that has been added to the <code>data.cube</code>: Variable <code>articles.model</code>, that is the average number of articles per week for each country (see above). Let’s now visualise it with <code>plot.var</code>.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">geomedia_<span class="dv">2014</span> <span class="op">%&gt;%</span>
-<span class="st">    </span><span class="kw">compute.var.model</span> (<span class="kw">articles</span> (week <span class="op">*</span><span class="st"> </span>country) <span class="op">~</span><span class="st"> </span><span class="kw">articles</span> (country)) <span class="op">%&gt;%</span>
+<span class="st">    </span><span class="kw">compute.var.model</span> (<span class="kw">articles</span> (week <span class="op">*</span><span class="st"> </span>country), <span class="kw">articles</span> (country)) <span class="op">%&gt;%</span>
 <span class="st">    </span><span class="kw">filter.elm</span> (country, name <span class="op">%in%</span><span class="st"> </span>selected_countries) <span class="op">%&gt;%</span>
 <span class="st">    </span><span class="kw">plot.var</span> (articles.model, <span class="dt">sep.dim.names =</span> country, <span class="dt">type =</span> <span class="st">&quot;line&quot;</span>) <span class="op">+</span>
 <span class="st">    </span><span class="kw">theme</span> (<span class="dt">axis.text.x =</span> <span class="kw">element_text</span> (<span class="dt">angle =</span> <span class="dv">90</span>, <span class="dt">size =</span> <span class="dv">6</span>))</code></pre></div>
-<pre><code>## Computing model: articles (week * country) ~ articles (country) * NULL (week)</code></pre>
+<pre><code>## Computing model &#39;articles (week * country) ~ articles (country) * NULL (week)&#39;</code></pre>
 <p><img src="_main_files/figure-html/unnamed-chunk-24-1.png" width="672" /></p>
-<p>This plot simply consists in the average number of articles per week for each of the five countries. We clearly see here that they all have a different expected values to which observations can then be compared. To do so, we now plot variable <code>articles.deviation</code>, that is the ratio between observed and expected values.</p>
+<p>This plot simply consists in the average number of articles per week for each of the five countries. We clearly see here that they all have a different expected value to which observations can then be compared.</p>
+</div>
+<div id="compute-deviation-with-compute.var.deviation" class="section level4">
+<h4><span class="header-section-number">4.1.1.2</span> Compute deviation with <code>compute.var.deviation</code></h4>
+<p>Function <code>compute.var.deviation</code> provides a measure of deviation between the observed variable <code>article</code> and the computed variable <code>articles.model</code>. It hence compute a third variable <code>articles.deviation</code> which is, by default, the ratio between the two variables, that is the ratio between observed and expected values (see below for other deviation measures).</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">geomedia_<span class="dv">2014</span> <span class="op">%&gt;%</span>
-<span class="st">    </span><span class="kw">compute.var.model</span> (<span class="kw">articles</span> (week <span class="op">*</span><span class="st"> </span>country) <span class="op">~</span><span class="st"> </span><span class="kw">articles</span> (country)) <span class="op">%&gt;%</span>
+<span class="st">    </span><span class="kw">compute.var.model</span> (<span class="kw">articles</span> (week <span class="op">*</span><span class="st"> </span>country), <span class="kw">articles</span> (country)) <span class="op">%&gt;%</span>
+<span class="st">    </span><span class="kw">compute.var.deviation</span> (<span class="kw">articles</span> (week <span class="op">*</span><span class="st"> </span>country)) <span class="op">%&gt;%</span>
 <span class="st">    </span><span class="kw">filter.elm</span> (country, name <span class="op">%in%</span><span class="st"> </span>selected_countries) <span class="op">%&gt;%</span>
 <span class="st">    </span><span class="kw">plot.var</span> (articles.deviation, <span class="dt">sep.dim.names =</span> country, <span class="dt">type =</span> <span class="st">&quot;bar&quot;</span>) <span class="op">+</span>
 <span class="st">    </span><span class="kw">theme</span> (<span class="dt">axis.text.x =</span> <span class="kw">element_text</span> (<span class="dt">angle =</span> <span class="dv">90</span>, <span class="dt">size =</span> <span class="dv">6</span>))</code></pre></div>
-<pre><code>## Computing model: articles (week * country) ~ articles (country) * NULL (week)</code></pre>
+<pre><code>## Computing model &#39;articles (week * country) ~ articles (country) * NULL (week)&#39;</code></pre>
+<pre><code>## Computing deviation of &#39;articles (week * country)&#39;</code></pre>
 <p><img src="_main_files/figure-html/unnamed-chunk-25-1.png" width="672" /></p>
+<p>Hence, in the plot above, <code>articles.deviation == 3</code> indicates that a country has been three times more cited during a week than usually, and <code>articles.deviation == 0.5</code> indicates that it has been two times less cited.</p>
 <p>This plot finally allows for the identification of outliers for each country through time, relatively to their usual “media coverage”. Values are centered on 1. Above this line are <em>positive</em> outliers (more cited than usual) and below are <em>negative</em> outliers (less cited than usual).</p>
+</div>
 </div>
 <div id="also-taking-into-account-the-expected-number-of-articles-for-each-week" class="section level3">
 <h3><span class="header-section-number">4.1.2</span> Also taking into account the expected number of articles for each week</h3>
@@ -248,23 +249,25 @@ geomedia_<span class="dv">2014</span> <span class="op">%&gt;%</span>
 <span class="st">    </span><span class="kw">theme</span> (<span class="dt">axis.text.x =</span> <span class="kw">element_text</span> (<span class="dt">angle =</span> <span class="dv">90</span>, <span class="dt">size =</span> <span class="dv">6</span>))</code></pre></div>
 <p><img src="_main_files/figure-html/unnamed-chunk-26-1.png" width="672" /></p>
 <p>In particular, as we see in the plot above, the dataset we explore contains much less articles during the first weeks of 2014 than later during the year. (This is due to data collection issues.) As a result, it is less likely to observe outliers during that period from the simple fact that observations are almost always below the computed averages. Conversely, outliers that are identified at the end of the year are slightly overestimated as global activity is higher than average at that time.</p>
-<p>To compensate for these temporal variations, one can also include them in the computed model. In the plot below, formula <code>articles (week * country) ~ articles (country) * articles (week)</code> indicates that marginal totals are taken into account both for dimension <code>country</code> (as above) and for dimension <code>week</code>. The number of articles citing a given country during a given week is hence expected to be similar to <em>the total number of articles citing that country</em> multiplied by <em>the total number of articles published during that week</em> divided by <em>the total number of articles in the corpus</em>.</p>
+<p>To compensate for these temporal variations, one can also include them in the computed model. In the plot below, model formula <code>articles (country) * articles (week)</code> indicates that marginal totals are taken into account both for dimension <code>country</code> (as above) and for dimension <code>week</code>. The number of articles citing a given country during a given week is hence expected to be similar to <em>the total number of articles citing that country</em> multiplied by <em>the total number of articles published during that week</em> divided by <em>the total number of articles in the corpus</em>.</p>
 <p>Formally, given <span class="math inline">\(w \in \texttt{week}\)</span> and <span class="math inline">\(c \in \texttt{country}\)</span>, we have <span class="math display">\[\texttt{articles.model}(w,c) \quad = \quad \frac{\texttt{articles}(.,c) \; \texttt{articles}(w,.)}{\texttt{articles}(w,c)} \text{,}\]</span> where <span class="math inline">\(\texttt{articles}(w,.)\)</span> denotes the marginal total along dimension <code>week</code> and <span class="math inline">\(\texttt{articles}(.,.)\)</span> denotes the grand total. It results a normalisation model that both takes into account the average “media coverage” of each country and the global temporal variations.</p>
 <p>First, the model:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">geomedia_<span class="dv">2014</span> <span class="op">%&gt;%</span>
-<span class="st">    </span><span class="kw">compute.var.model</span> (<span class="kw">articles</span> (week <span class="op">*</span><span class="st"> </span>country) <span class="op">~</span><span class="st"> </span><span class="kw">articles</span> (week) <span class="op">*</span><span class="st"> </span><span class="kw">articles</span> (country)) <span class="op">%&gt;%</span>
+<span class="st">    </span><span class="kw">compute.var.model</span> (<span class="kw">articles</span> (week <span class="op">*</span><span class="st"> </span>country), <span class="kw">articles</span> (week) <span class="op">*</span><span class="st"> </span><span class="kw">articles</span> (country)) <span class="op">%&gt;%</span>
 <span class="st">    </span><span class="kw">filter.elm</span> (country, name <span class="op">%in%</span><span class="st"> </span>selected_countries) <span class="op">%&gt;%</span>
 <span class="st">    </span><span class="kw">plot.var</span> (articles.model, <span class="dt">sep.dim.names =</span> country, <span class="dt">type =</span> <span class="st">&quot;line&quot;</span>) <span class="op">+</span>
 <span class="st">    </span><span class="kw">theme</span> (<span class="dt">axis.text.x =</span> <span class="kw">element_text</span> (<span class="dt">angle =</span> <span class="dv">90</span>, <span class="dt">size =</span> <span class="dv">6</span>))</code></pre></div>
-<pre><code>## Computing model: articles (week * country) ~ articles (week) * articles (country)</code></pre>
+<pre><code>## Computing model &#39;articles (week * country) ~ articles (week) * articles (country)&#39;</code></pre>
 <p><img src="_main_files/figure-html/unnamed-chunk-27-1.png" width="672" /></p>
-<p>Second, the deviations:</p>
+<p>Second, the deviation:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">geomedia_<span class="dv">2014</span> <span class="op">%&gt;%</span>
-<span class="st">    </span><span class="kw">compute.var.model</span> (<span class="kw">articles</span> (week <span class="op">*</span><span class="st"> </span>country) <span class="op">~</span><span class="st"> </span><span class="kw">articles</span> (week) <span class="op">*</span><span class="st"> </span><span class="kw">articles</span> (country)) <span class="op">%&gt;%</span>
+<span class="st">    </span><span class="kw">compute.var.model</span> (<span class="kw">articles</span> (week <span class="op">*</span><span class="st"> </span>country), <span class="kw">articles</span> (week) <span class="op">*</span><span class="st"> </span><span class="kw">articles</span> (country)) <span class="op">%&gt;%</span>
+<span class="st">    </span><span class="kw">compute.var.deviation</span> (<span class="kw">articles</span> (week <span class="op">*</span><span class="st"> </span>country)) <span class="op">%&gt;%</span>
 <span class="st">    </span><span class="kw">filter.elm</span> (country, name <span class="op">%in%</span><span class="st"> </span>selected_countries) <span class="op">%&gt;%</span>
 <span class="st">    </span><span class="kw">plot.var</span> (articles.deviation, <span class="dt">sep.dim.names =</span> country, <span class="dt">type =</span> <span class="st">&quot;bar&quot;</span>) <span class="op">+</span>
 <span class="st">    </span><span class="kw">theme</span> (<span class="dt">axis.text.x =</span> <span class="kw">element_text</span> (<span class="dt">angle =</span> <span class="dv">90</span>, <span class="dt">size =</span> <span class="dv">6</span>))</code></pre></div>
-<pre><code>## Computing model: articles (week * country) ~ articles (week) * articles (country)</code></pre>
+<pre><code>## Computing model &#39;articles (week * country) ~ articles (week) * articles (country)&#39;</code></pre>
+<pre><code>## Computing deviation of &#39;articles (week * country)&#39;</code></pre>
 <p><img src="_main_files/figure-html/unnamed-chunk-28-1.png" width="672" /></p>
 <p>Contrary to the previous deviation plot, we can see here some outliers appearing during the first weeks of 2014, even though the global “media activity” on that period is lower than during the rest of the year.</p>
 <p><strong>Warning!</strong> Note that, in the operation sequence above, function <code>compute.var.model</code> (computing the model) is called before function <code>filter.elm</code> (selecting the five countries of interest). Order is important! The normalisation model (and in particular the global “media activity”) is here computed with respect to the full corpus, and not only with respect to the subset of countries. Filtering of elements is here applied after computing the model just to reduce the number of curves to be displayed in the plot.</p>
@@ -272,7 +275,7 @@ geomedia_<span class="dv">2014</span> <span class="op">%&gt;%</span>
 <div id="significativity-of-deviations" class="section level3">
 <h3><span class="header-section-number">4.1.3</span> Significativity of deviations</h3>
 <p>Ratio between observed and expected values induce interpretation errors has it does not account for the statistical significativity of deviations. Indeed, with this basic measure, observing 2 articles when expecting 1 is considered as surprising as observing 200 when expecting 100. Yet, variations on small numbers can be the result of noisy data or randomness in the observed processes.</p>
-<p>Function <code>compute.var.model</code> hence proposes several measures to account for the significativity of deviations. To this end, argument <code>deviation.type</code> can take the following values:</p>
+<p>Function <code>compute.var.deviation</code> hence proposes several measures to account for the significativity of deviations. To this end, argument <code>deviation.type</code> can take the following values:</p>
 <ul>
 <li><code>ratio</code></li>
 </ul>
@@ -301,8 +304,11 @@ geomedia_<span class="dv">2014</span> <span class="op">%&gt;%</span>
 <li><code>KLdiv</code></li>
 </ul>
 <p><span class="math display">\[\texttt{var.deviation} \quad = \quad \frac{\texttt{var}}{\sum{\texttt{var}}} \; \log_2 \left (\frac{\texttt{var}}{\texttt{var.model}} \right)\]</span></p>
-
 </div>
+</div>
+<div id="plotting-outliers" class="section level2">
+<h2><span class="header-section-number">4.2</span> Plotting Outliers</h2>
+
 </div>
 </div>
             </section>
