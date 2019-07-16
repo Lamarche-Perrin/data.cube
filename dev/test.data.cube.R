@@ -1,15 +1,6 @@
 rm (list = ls())
 
 
-## Test geomedia data
-source ('../src/data.cube.R')
-
-filename <- paste0 ("../data/geomedia.csv")
-df <- filename %>% read_csv
-dc <- df %>% as.data.cube_(df %>% names %>% head (-1))
-dc %>% select.dim () %>% compute.var.model_("article_nb () ~ NULL") %>% str
-
-
 ## Test primitives
 source ('../src/data.cube.R')
 
@@ -33,9 +24,12 @@ test.dot.names (v = a)
 test.dot.names ()
 test.dot.names (NULL)
 
+
 ## Import datasets
+source ('../src/data.cube.R')
 
 df.123 <- read_csv ('../test/example.dim1.dim2.dim3.csv')
+df.112 <- read_csv ('../test/example.dim1.dim1.dim2.csv')
 df.12 <- read_csv ('../test/example.dim1.dim2.csv')
 df.23 <- read_csv ('../test/example.dim2.dim3.csv')
 df.1 <- read_csv ('../test/example.dim1.csv')
@@ -43,11 +37,40 @@ df.2 <- read_csv ('../test/example.dim2.csv')
 df. <- read_csv ('../test/example.csv')
 
 head (df.123)
+head (df.112)
 head (df.12)
 head (df.23)
 head (df.1)
 head (df.2)
 head (df.)
+
+
+## Test identical dims
+source ('../src/data.cube.R')
+
+dc.112 <- df.112 %>% as.data.cube (c (from = dim1.1, to = dim1.2, time = dim2), c (inter = var11), sub.dim.names = c (user = c (from, to)))
+dc.12 <- df.12 %>% as.data.cube (c (user = dim1, time = dim2), c (activ = var12))
+dc.1 <- df.1 %>% as.data.cube (c (user = dim1), c (login = var7))
+
+dc <- dc.112 %>% join (dc.12) %>% join (dc.1)
+dc %>% str
+dc %>% dim.names
+dc %>% sup.dim.names
+dc %>% sub.dim.names
+dc %>% summary
+dc %>% as.data.frame
+
+dc %>% select.dim (user, from, to, time) %>% str
+dc %>% select.dim (user, from, to) %>% str
+dc %>% select.dim (from, to) %>% str
+dc %>% select.dim (time) %>% str
+dc %>% select.dim () %>% str
+
+dc %>% select.dim (user, from) %>% str
+dc %>% select.dim (from) %>% str
+dc %>% select.dim (user) %>% str
+dc %>% select.dim (user, from, time) %>% str
+dc %>% select.dim (user, time) %>% str
 
 
 ## Create data.cube
@@ -356,6 +379,17 @@ dca %>% plot.var (v1, v2, sep.dim.names = b, type = "point") # ERROR
 dca %>% plot.var (v1, sep.dim.names = c (b, c), type = "bar")
 dca %>% plot.var (v1, sep.dim.names = c (b, c), type = "line")
 dca %>% plot.var (v1, sep.dim.names = c (b, c), type = "point")
+
+
+## Plot variables 3
+source ('../src/data.cube.R')
+
+dc %>% biplot.var (v1, v2)
+dc %>% biplot.var (v1, v2, log = "xy")
+dc %>% biplot.var (v1, v4)
+
+
+dc %>% graph.var (v1)
 
 
 ## Test variable formulae
