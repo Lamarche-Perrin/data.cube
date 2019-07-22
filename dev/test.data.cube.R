@@ -173,6 +173,25 @@ dim.nb (dc)
 var.names (dc)
 var.nb (dc)
 
+source ('../src/data.cube.R')
+dc %>% get.FUN.var (v1)
+dc %>% get.FUN.var (v1, v3)
+dc %>% get.FUN.var ()
+
+dc %>% set.FUN.var (v1 = mean, v3 = mean) %>% get.FUN.var (v1, v3)
+(dc %>% set.FUN.var (v1 = mean) %>% get.FUN.var (v1)) (seq (6))
+    
+
+## Pull variables and dimensions
+source ('../src/data.cube.R')
+
+dc %>% pull.var (v1)
+dc %>% pull.var (v1, complete = TRUE)
+dc %>% pull.var (v3)
+
+dc %>% pull.dim (a)
+dc %>% arrange.elm (a, name) %>% pull.dim (a)
+
 
 ## Compute margins
 source ('../src/data.cube.R')
@@ -229,6 +248,11 @@ dc %>% select.var (v1) %>% select.dim (a, b) %>% arrange.elm (c (a, b), v1) %>% 
 dc %>% select.var (v1) %>% arrange.elm (c (a, b), v1) %>% as.data.frame
 dc %>% select.var (v1) %>% arrange.elm (c, name) %>% arrange.elm (c (a, b), v1) %>% as.data.frame
 dc %>% select.var (v1) %>% arrange.elm (c (a, b), v1) %>% arrange.elm (c, name) %>% as.data.frame
+
+dc %>% as.data.frame
+dc %>% arrange.elm.by.name (b) %>% as.data.frame
+dc %>% arrange.elm.by.name (a, b) %>% as.data.frame
+dc %>% arrange.elm.by.name %>% as.data.frame
 
 
 ## Arrange elements 2
@@ -294,6 +318,14 @@ dc %>% mutate.var (c (b, a), v11 = v1 + v2) %>% str
 dc %>% mutate.var (c (b, a), v11 = v1 + v2, v12 = ifelse (v3 == 'A', v11, NA)) %>% str
 
 dc %>% transmute.var (c (b, a), v11 = v1 + v2, v12 = ifelse (v3 == 'A', v11, NA)) %>% str
+
+
+## Complete and compress elements
+source ('../src/data.cube.R')
+
+dc %>% as.data.frame
+dc %>% complete.elm %>% as.data.frame
+dc %>% complete.elm %>% compress.elm %>% as.data.frame
 
 
 ## Filter elements
