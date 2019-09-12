@@ -22,12 +22,15 @@
 ## with this program. If not, see <http://www.gnu.org/licenses/>.
 
 
-library ("plyr")
+library ("scales")
 library ("crayon")
+library ("plyr")
 library ("tidyverse")
 library ("reshape2")
 library ("rlang")
 library ("ggrepel")
+library ("igraph")
+library ("lubridate")
 
 ##library ("sticky")
 ##append <- base::append
@@ -54,6 +57,11 @@ dot.names <- function (dots) {
 
 dim.names <- function (obj, ...) { UseMethod ("dim.names") }
 dim.names.data.cube <- function (dc) { append (character(0), names (attr (dc, "dims"))) }
+
+max.dim.names <- function (obj, ...) { UseMethod ("max.dim.names") }
+max.dim.names.data.cube <- function (dc) {
+    names (dc) [[names (dc) %>% sapply (data.plane.dim.nb) %>% max]] %>% data.plane.dim.names
+}
 
 dim.nb <- function (obj, ...) { UseMethod ("dim.nb") }
 dim.nb.data.cube <- function (dc) { length (dim.names (dc)) }
@@ -179,7 +187,7 @@ var.FUN <- function (var.class) {
             double = sum,
             numeric = sum,
             logical = all,
-            character = function (...) paste (..., collapse = ","),
+            character = function (...) paste (..., collapse = " "),
             ## character = paste (..., collapse = ","),
             NA
             )
@@ -204,6 +212,7 @@ as.data.cube.data.frame <-
 
         df %>% as.data.cube_(str.dim.names, str.var.names, str.sub.dim.names)
     }
+
 
 as.data.cube.matrix <-
     function (mat,
@@ -243,7 +252,43 @@ as.data.cube.array <-
     }
 
 
+as.data.cube.numeric <-
+        function (c, dim.name, var.name) {
+            
+        str.dim.name <- arg.names (substitute (dim.name))
+        str.var.name <- arg.names (substitute (var.name))
+        
+        df <- data.frame (V1 = c %>% names, V2 = c %>% unname %>% unlist)
+        names (df) <- c (str.dim.name, str.var.name)
+        df %>% as.data.cube_(str.dim.name, str.var.name)
+    }
 
+
+as.data.cube.list <-
+    function (l, dim.name, var.name) {
+        
+        str.dim.name <- arg.names (substitute (dim.name))
+        str.var.name <- arg.names (substitute (var.name))
+        
+        df <- data.frame (V1 = l %>% names, V2 = l %>% unname %>% unlist)
+        names (df) <- c (str.dim.name, str.var.name)
+        df %>% as.data.cube_(str.dim.name, str.var.name)
+    }
+
+
+as.data.cube.membership <-
+    function (m, dim.name) {
+
+        str.dim.name <- arg.names (substitute (dim.name))
+        str.var.name <- "community"
+        
+        l <- m %>% as.list
+        df <- data.frame (V1 = l %>% names, V2 = l %>% unname %>% unlist)
+        names (df) <- c (str.dim.name, str.var.name)
+        df %>% as.data.cube_(str.dim.name, str.var.name)
+    }
+
+        
 as.data.cube_ <- function (obj, ...) { UseMethod ("as.data.cube_") }
 as.data.cube_.data.frame <-
     function (df,
@@ -406,17 +451,52 @@ as.data.cube_.array <-
 
 
 elm.nb <- function (obj, ...) { UseMethod ("elm.nb") }
-elm.nb.data.cube <- function (dc, dim.name) { dc %>% plane (dim.name) %>% nrow }
+elm.nb.data.cube <- function (dc, ...) {
+    str.dim.names <- dot.names (enquos (...))
+    dc %>% elm.nb_(str.dim.names)
+}
+
+elm.nb_<- function (obj, ...) { UseMethod ("elm.nb_") }
+elm.nb_.data.cube <- function (dc, dim.name) { dc %>% plane (dim.name) %>% nrow }
 
 elm.names <- function (obj, ...) { UseMethod ("elm.names") }
-elm.names.data.cube <- function (dc, dim.name) { dc %>% plane (dim.name) %>% pull (name) }
+elm.names.data.cube <- function (dc, dim.name) {
+    dc %>%
+        select.var %>%
+        select.dim (dim.name) %>%
+        as.data.frame %>%
+        pull (dim.name)
+}
+
+
+print.data.cube <- function (dc) {
+    cat (
+        "data.cube of ",
+        dim.nb (dc), ## TODO: distinguish sub-dimensions
+        " dimension",
+        ifelse (dim.nb (dc) > 1, "s", ""),
+        " and ",
+        var.nb (dc),
+        " variable",
+        ifelse (var.nb (dc) > 1, "s", ""),
+        "\n\n",
+        sep = ""
+    )
+
+    for (dp.name in names (dc)) {
+        dim.names <- data.plane.dim.names (dp.name)
+        cat ("-> data.plane ", paste (cyan (dim.names), collapse = " x "), "\n", sep = "")
+        dc %>% select.dim_(dim.names) %>% as.data.frame (dim.names) %>% print
+        cat ("\n")
+    }
+}
 
 
 summary.data.cube <- function (dc) {
     elm.nchar <- 50
     cat (
         "data.cube of ",
-        dim.nb (dc),
+        dim.nb (dc), ## TODO: distinguish sub-dimensions
         " dimension",
         ifelse (dim.nb (dc) > 1, "s", ""),
         " and ",
@@ -433,16 +513,14 @@ summary.data.cube <- function (dc) {
         if (dim.name %in% sub.dim.names (dc)) {
             cat (" - Sub-dimension of ", cyan (attr (dims (dc, dim.name), "sup.dim.name")), "\n", sep = "")
         } else {
-            elm.nb <- dc %>% elm.nb (dim.name)
+            elm.nb <- dc %>% elm.nb_(dim.name)
             elm.names <- dc %>% elm.names (dim.name)
-            
+
             i <- 1
             elm.str <- elm.names[i]
-            ## elm.str <- paste0 ("'", elm.names[i], "'")
             while (nchar (elm.str) < elm.nchar && i < length (elm.names)) {
                 i <- i + 1        
                 elm.str <- paste0 (elm.str, ", ", elm.names[i])
-                ## elm.str <- paste0 (elm.str, ", '", elm.names[i], "'")
             }
             if (i < length (elm.names)) {
                 elm.str <- paste0 (elm.str, ", ...")
@@ -451,12 +529,6 @@ summary.data.cube <- function (dc) {
             cat (" - Element number: ", elm.nb, "\n", sep = "")
             cat (" - Class (type):   ", elm.names %>% class, " (", elm.names %>% typeof, ")\n", sep = "")
             cat (" - Element names:  ", elm.str, "\n", sep = "")
-
-            ## dp.name <- dim
-            ## for (var.name in names (dc[[dp.name]]$vars)) {
-            ##     cat (" - '", var.name, "' variable:\n", sep = "")
-            ##     print (summary (dc[[dp.name]]$vars[[var.name]]))
-            ## }
         }
 
         cat ("\n")
@@ -478,30 +550,8 @@ summary.data.cube <- function (dc) {
         cat (" - NA value:    ")
         var %>% attr ("NA.value") %>% str
 
-        ## cat (" - FUN value:  ", var %>% attr ("FUN.value") %>% str, "\n", sep = "")
-
-        ## cat (" - total: ", dc[["."]]$vars[[var.name]], "\n", sep = "")
-        ## dp.nb <- length (plane (dc, dc.name)$vars[[var.name]])
-        ## cat (
-        ##     " - divided into ",
-        ##     dp.nb,
-        ##     " (non-null) dpervation",
-        ##     ifelse (dp.nb > 1, "s", ""),
-        ##     "\n",
-        ##     sep = ""
-        ## )
-        ## elm.nb <- prod (unlist (dc$elm.nb))
-        ## cat (
-        ##     " - among ",
-        ##     elm.nb,
-        ##     " cell",
-        ##     ifelse (elm.nb > 1, "s", ""),
-        ##     " (density = ",
-        ##     format (dp.nb / elm.nb, digits = 3),
-        ##     ")\n",
-        ##     sep = ""
-        ## )
-        ## print (summary (plane (dc, dc.name)$vars[[var.name]]))
+        ## cat (" - Agg value:   ")
+        ## (var %>% attr ("FUN.value")) (dc %>% select.var_(var.name) %>% select.dim_(var %>% attr ("dim.names")) %>% pull.var_(var.name)) %>% str
 
         cat ("\n")
     }
@@ -603,7 +653,6 @@ rename.dim.data.cube <-
 
 rename.dim_ <- function (obj, ...) { UseMethod ("rename.dim_") }
 rename.dim_.data.cube <- function (dc, dim.names) {
-    
     ## Get renaming table
     new.dim.names <- setNames (dim.names (dc), dim.names (dc))
     new.dim.names <- sapply (new.dim.names, function (dim.name) ifelse (dim.name %in% dim.names, names (dim.names) [dim.names == dim.name], dim.name))
@@ -611,7 +660,12 @@ rename.dim_.data.cube <- function (dc, dim.names) {
     ## Rename dim attributes
     for (dim.name in dim.names (dc)) {
         dim <- unname (new.dim.names [dim.name])
-        attributes (dim) <- attributes (dims (dc, dim.name))
+
+        ## Rename sub- and sup-dimensions
+        new.attributes <- attributes (dims (dc, dim.name))
+        new.attributes$sup.dim.name <- new.dim.names [new.attributes$sup.dim.name] %>% unname
+        new.attributes$sub.dim.names <- new.dim.names [new.attributes$sub.dim.names] %>% unname
+        attributes (dim) <- new.attributes
         dims (dc, dim.name) <- dim
     }
     names (attr (dc, "dims")) <- unname (new.dim.names [dim.names (dc)])
@@ -628,8 +682,6 @@ rename.dim_.data.cube <- function (dc, dim.names) {
     if (! is.null (attr (dc, "arrange.var.names"))) {
         names (attr (dc, "arrange.var.names")) <- sapply (names (attr (dc, "arrange.var.names")), function (dp.name) plane.name (dc, unname (new.dim.names [data.plane.dim.names (dp.name)])))
     }
-
-    ## TODO: rename sub- and sup-dimensions
     
     ## Rename dim.names in dp
     for (dp.name in names (dc)) {
@@ -727,8 +779,8 @@ join.data.cube <- function (dc, ...) {
                 indice.table <- joint.df %>% dplyr::arrange (!! rlang::sym (mod.dim.name)) %>% pull (dim.name)
 
                 ## Copy plane attributes
-                attr.names <- names (attributes (plane (dc, dim.name))) %>% setdiff (c ("names", "row.names", "class"))
-                attr (joint.df, attr.names) <- attr (plane (dc, dim.name), attr.names)
+                ## attr.names <- names (attributes (plane (dc, dim.name))) %>% setdiff (c ("names", "row.names", "class"))
+                plane.attributes (joint.df) <- plane.attributes (dc[[dim.name]])
 
                 ## Replace orgininal plane by its joint
                 plane (dc, dim.name) <- joint.df %>% select (names (joint.df) %>% setdiff (mod.dim.name))
@@ -736,10 +788,12 @@ join.data.cube <- function (dc, ...) {
                 ## Update element indices in added planes
                 for (dp.name in names (add.dc)) {
                     dp.dim.names <- data.plane.dim.names (dp.name)
-
+                    
                     if (dim.name %in% dp.dim.names && length (dp.dim.names) > 1) {
                         expr <- parse_expr (paste0 ("indice.table [", dim.name, "]"))
-                        plane (add.dc, dp.dim.names) <- plane (add.dc, dp.dim.names) %>% dplyr::mutate (!! dim.name := !! expr)
+                        df <- plane (add.dc, dp.dim.names) %>% dplyr::mutate (!! dim.name := !! expr)
+                        plane.attributes (df) <- plane.attributes (plane (add.dc, dp.dim.names))
+                        plane (add.dc, dp.dim.names) <- df
                     }
                 }
             }
@@ -748,7 +802,7 @@ join.data.cube <- function (dc, ...) {
         ## Join other data.planes
         for (dp.name in names (add.dc)) {
             dp.dim.names <- data.plane.dim.names (dp.name)
-
+            
             if (length (dp.dim.names) != 1) {
                 if (is.null (plane (dc, dp.dim.names))) {
                     plane (dc, dp.dim.names) <- plane (add.dc, dp.dim.names)
@@ -798,15 +852,15 @@ as.data.frame_.data.cube <-
             dp.size <- names (dc) %>% sapply (function (dp.name) { dp.name %>% data.plane.dim.names %>% length })
             max.dp.names <- which (dp.size == max (dp.size)) %>% names
             if (length (max.dp.names) > 1) {
-                warning ("This data.cube contains several maximal-size data.planes. Only of those is here provided.")
+                warning ("This data.cube contains several maximal-size data.planes. Only one of those is here provided.")
             }
             dim.names <- max.dp.names[1] %>% data.plane.dim.names
         }
 
         ## Build resulting data.frame
-        if (complete) { dc <- dc %>% complete.elm_(dim.names (dc)) }
-        dc <- dc %>% apply.arrange.elm_(dim.names (dc))
-
+        if (complete) { dc <- dc %>% complete.elm_(dim.names) }
+        dc <- dc %>% apply.arrange.elm_(dim.names)
+        
         dp.name <- plane.name (dc, dim.names)
         
         if (is.null (dc[[dp.name]])) { df <- empty.plane (dim.names (dc)) } else { df <- dc[[dp.name]] }
@@ -864,6 +918,48 @@ as.matrix_.data.cube <-
         dimnames (mat) [[1]] <- df[[dim.name]]
 
         return (mat)
+    }
+
+
+as.igraph.data.cube <-
+    function (dc, from.dim.name, to.dim.name, vertex.size, edge.weight) {
+        str.from.dim.name <- arg.names (substitute (from.dim.name))
+        str.to.dim.name <- arg.names (substitute (to.dim.name))
+        str.vertex.size <- arg.names (substitute (vertex.size))
+        str.edge.weight <- arg.names (substitute (edge.weight))
+        
+        dc %>% as.igraph_(str.from.dim.name, str.to.dim.name, str.vertex.size, str.edge.weight)
+    }
+
+
+as.igraph_<- function (obj, ...) UseMethod ("as.igraph_")
+as.igraph_.data.cube <-
+    function (dc, from.dim.name, to.dim.name, vertex.size, edge.weight) {
+        
+        dim.names <- c (from.dim.name, to.dim.name)
+        
+        edges <-
+            dc %>%
+            select.dim_(dim.names) %>%
+            select.var_(edge.weight) %>%
+            rename.var_(c (weight = edge.weight)) %>%
+            as.data.frame
+
+        sup.dim.names <-
+            dim.names %>%
+            intersect (sup.dim.names (dc)) %>%
+            append (
+                lapply (dim.names, function (dim.name) attr (dims (dc, dim.name), "sup.dim.name")) %>% unlist
+            ) %>%
+            unique
+
+        vertices <-
+            dc %>%
+            select.dim_(sup.dim.names) %>%
+            select.var_(c (size = vertex.size)) %>%
+            as.data.frame
+        
+        graph_from_data_frame (edges, directed = TRUE, vertices)
     }
 
 
@@ -1048,7 +1144,9 @@ mutate.var.data.cube <-
         if (is.null (str.dim.names)) { str.dim.names <- dim.names (dc) }
 
         str.var.mutates <- dot.names (enquos (...))
-        str.var.mutates <- paste (names (str.var.mutates), "=", str.var.mutates)
+        if (length (str.var.mutates > 0)) {
+            str.var.mutates <- paste (names (str.var.mutates), "=", str.var.mutates)
+        }
         
         dc %>% mutate.var_(str.dim.names, str.var.mutates)
     }
@@ -1082,7 +1180,7 @@ mutate.var_.data.cube <-
             var.class <- class (dc[[dp.name]] %>% pull (new.var.name))
 
             if (dp.name == "$") { dc[[dp.name]] <- dc[[dp.name]] %>% as.list }
-                plane.attributes (dc[[dp.name]]) <- attrs
+            plane.attributes (dc[[dp.name]]) <- attrs
             
             ## Update attributes
             if (new.var.name != "name") {
@@ -1103,26 +1201,26 @@ transmute.var <- function (obj, ...) { UseMethod ("transmute.var") }
 transmute.var.data.cube <-
     function (dc, dim.names = NULL, ...) {
         str.dim.names <- arg.names (substitute (dim.names))
-        if (is.null (str.dim.names)) { str.dim.names <- dim.names (dc) }
+        if (is.null (str.dim.names)) { str.dim.names <- max.dim.names (dc) }
 
-        str.var.mutates <- dot.names (enquos (...))
-        str.var.mutates <- paste (names (str.var.mutates), "=", str.var.mutates)
+        str.var.transmutes <- dot.names (enquos (...))
+        str.var.transmutes <- paste (names (str.var.transmutes), "=", str.var.transmutes)
         
-        dc %>% transmute.var_(str.dim.names, str.var.mutates)
+        dc %>% transmute.var_(str.dim.names, str.var.transmutes)
     }
 
 
 transmute.var_ <- function (obj, ...) { UseMethod ("transmute.var_") }
 transmute.var_.data.cube <-
-    function (dc, dim.names = attr (dc, "dim.names"), var.mutates) {
-
-        new.var.names <- unname (sapply (var.mutates, function (var.mutate) {
-            pos <- regexpr ("=", var.mutate) [1]
-            var.mutate %>% substring (0, pos-1) %>% trimws ()
+    function (dc, dim.names = max.dim.names.data.cube (dc), var.transmutes) {
+        
+        new.var.names <- unname (sapply (var.transmutes, function (var.transmute) {
+            pos <- regexpr ("=", var.transmute) [1]
+            var.transmute %>% substring (0, pos-1) %>% trimws ()
         }))
         
         dc %>%
-            mutate.var_(dim.names, var.mutates) %>%
+            mutate.var_(dim.names, var.transmutes) %>%
             select.dim_(dim.names) %>%
             select.var_(new.var.names)
     }
@@ -1629,6 +1727,7 @@ compute.vars.outlier_.data.cube <-
 select.dim <- function (obj, ...) { UseMethod ("select.dim") }
 select.dim.data.cube <-
     function (dc, ..., with.sub.dims = FALSE) {
+        ## TODO: deal with renaming
         #str.dim.names <- dot.names (enquos (...))
         dim.names <- dim.names (dc)
         dim.names <- dim.names %>% setNames (dim.names)
@@ -1657,7 +1756,7 @@ select.dim_.data.cube <-
         sub.dim.names <-
             all.sub.dim.names %>%
             lapply (function (dim.name) { intersect (dim.name, dim.names) })
-
+        
         missing.sub.dim.names <-
             sup.dim.names %>%
             lapply (function (dim.name) {
@@ -1713,19 +1812,27 @@ select.dim_.data.cube <-
                 
                 ## Aggregate all concerned variables along all concerned sub-dimensions
                 for (missing.sub.dim.name in missing.sub.dim.names[[sup.dim.name]]) {
-                    other.sub.dim.names <- sub.dim.names[[sup.dim.name]] %>% setdiff (missing.sub.dim.name)
-                    sub.var.names <- vars (dc) [sapply (vars (dc), function (var) { missing.sub.dim.name %in% attr (var, "dim.names") })] %>% names
-                
-                    for (sub.var.name in sub.var.names) {
+                    other.sub.dim.names <- all.sub.dim.names[[sup.dim.name]] %>% setdiff (missing.sub.dim.name)
+                    if (var.nb (dc) > 0) {
+                        sub.var.names <- vars (dc, drop = FALSE) [sapply (vars (dc, drop = FALSE), function (var) { missing.sub.dim.name %in% attr (var, "dim.names") })] %>% names
                         
+                                                
+                        ##for (sub.var.name in sub.var.names) {
                         ## Create alternate data.cube
                         sub.dim.rename <- missing.sub.dim.name %>% setNames (sup.dim.name)
-                        sub.var.rename <- c (sub.var.name) %>% setNames (paste0 (sub.var.name, ".", missing.sub.dim.name))
-                        alt.dc <- dc %>% select.var_(sub.var.name) %>% rename.var_(sub.var.rename) %>% rename.dim_(sub.dim.rename)
+                        sub.var.renames <- sub.var.names %>% setNames (paste0 (sub.var.names, ".", missing.sub.dim.name))
+                        alt.dc <- dc %>% select.var_(sub.var.names) %>% rename.var_(sub.var.renames) %>% rename.dim_(sub.dim.rename)
                         attr (alt.dc, "dims") <- dims (alt.dc, dim.names (alt.dc) %>% unique, drop = FALSE)
 
                         ## Merge with working data.cube
                         dc <- dc %>% join (alt.dc %>% select.dim_(sup.dim.names))
+
+                        ## dc %>% pull.dim (user) %>% str
+                        ## alt.dc %>% select.dim_(sup.dim.names) %>% pull.dim (user) %>% str
+                        ## all ((dc %>% pull.dim (user)) == (alt.dc %>% select.dim_(sup.dim.names) %>% pull.dim (user)))
+
+                        ## dc %>% join (alt.dc %>% select.dim_(sup.dim.names)) %>% str
+                        ##}
                     }
                 }
             }
@@ -1742,6 +1849,7 @@ select.dim_.data.cube <-
 select.var <- function (obj, ...) { UseMethod ("select.var") }
 select.var.data.cube <-
     function (dc, ...) {
+        ## TODO : deal with renaming
         # str.var.names <- dot.names (enquos (...))
         var.names <- var.names (dc)
         var.names <- var.names %>% setNames (var.names)
@@ -1814,7 +1922,7 @@ select.var_.data.cube <-
             }
             if (length (attr (dc, "arrange.var.names")) == 0) { attr (dc, "arrange.var.names") <- NULL }
         }
-
+        
         if (! is.null (names (var.names))) { dc <- dc %>% rename.var_(var.names [names (var.names) != ""]) }
         dc <- dc %>% reorder.var_()
         
@@ -1834,6 +1942,7 @@ pull.dim_ <- function (obj, ...) { UseMethod ("pull.dim_") }
 pull.dim_.data.cube <-
     function (dc, dim.name) {
         dc %>%
+            select.var () %>%
             select.dim_(dim.name) %>%
             as.data.frame () %>%
             pull (dim.name)        
@@ -1851,9 +1960,10 @@ pull.var.data.cube <-
 pull.var_ <- function (obj, ...) { UseMethod ("pull.var_") }
 pull.var_.data.cube <-
     function (dc, var.name, complete = FALSE) {
+        dim.names <- attr (vars (dc, var.name), "dim.names")
         dc %>%
             select.var_(var.name) %>%
-            as.data.frame (complete = complete) %>%
+            as.data.frame_(dim.names, complete = complete) %>%
             pull (var.name)        
     }
 
@@ -1909,12 +2019,17 @@ complete.elm.data.cube <-
 
 complete.elm_ <- function (obj, ...) { UseMethod ("complete.elm_") }
 complete.elm_.data.cube <-
-    function (dc, dim.names = attr (dc, "dim.names")) {
+    function (dc, dim.names = dim.names.data.cube (dc)) {
+
         dp.name <- plane.name (dc, dim.names)
         var.names <- names (dc[[dp.name]]) %>% intersect (var.names (dc))
-
+        
         df <- tibble()
-        for (dim.name in dim.names) { df <- df %>% crossing (plane (dc, dim.name) %>% select (dim.name)) }
+        for (dim.name in dim.names) {
+            sup.dim.name <- attr (dims (dc, dim.name), "sup.dim.name")
+            if (length (sup.dim.name) == 0) { sup.dim.name <- dim.name }
+            df <- df %>% tidyr::crossing (plane (dc, sup.dim.name) %>% select (sup.dim.name)) %>% rename (!! dim.name := sup.dim.name)
+        }
 
         if (is.null (dc[[dp.name]])) { dc[[dp.name]] <- empty.plane (dim.names) }
         
@@ -1964,17 +2079,23 @@ filter.elm.indices.data.cube <-
 filter.elm.indices_ <- function (obj, ...) { UseMethod ("filter.elm.indices_") }
 filter.elm.indices_.data.cube <-
     function (dc, dim.name, elm.indices) {
-
+        
         ## Build transformation table for indices
         indice.table <- rep (NA, nrow (plane (dc, dim.name)))
         indice.table [elm.indices] <- seq_along (elm.indices)
 
         ## Update data.planes
-        filter_expr <- parse_expr (paste0 (dim.name, " %in% elm.indices"))
         for (dp.name in names (dc)) {
-            if (dim.name %in% data.plane.dim.names (dp.name)) {
-                mutate_expr <- parse_expr (paste0 ("indice.table [", dim.name, "]"))
-                dc[[dp.name]] <- dc[[dp.name]] %>% filter (!! filter_expr) %>% dplyr::mutate (!! dim.name := !! mutate_expr)
+            dp.dim.names <- data.plane.dim.names (dp.name)
+            for (dp.dim.name in dp.dim.names) {
+                filter_expr <- parse_expr (paste0 (dp.dim.name, " %in% elm.indices"))
+                mutate_expr <- parse_expr (paste0 ("indice.table [", dp.dim.name, "]"))
+                if (dim.name == dp.dim.name || dim.name %in% attr (dims (dc, dp.dim.name), "sup.dim.name")) {
+                    dc[[dp.name]] <-
+                        dc[[dp.name]] %>%
+                        filter (!! filter_expr) %>%
+                        dplyr::mutate (!! dp.dim.name := !! mutate_expr)                    
+                }
             }
         }
 
@@ -2007,7 +2128,7 @@ filter.elm.data.cube <-
 
 filter.elm_ <- function (obj, ...) { UseMethod ("filter.elm_") }
 filter.elm_.data.cube <- function (dc, dim.names, elm.filters) {
-
+    
     ## Compute involved variables
     elm.filter <- paste (elm.filters, collapse = " & ")
     f <- function () {}
@@ -2038,6 +2159,221 @@ top_n.elm.data.cube <- function (dc, dim.name, var.name, n) {
 }
 
 
+group.elm.by.var <- function (obj, ...) { UseMethod ("group.elm.by.var") }
+group.elm.by.var.data.cube <-
+    function (dc, dim.name, by.var.name, ...) {
+        str.dim.name <- arg.names (substitute (dim.name))        
+        str.by.var.name <- arg.names (substitute (by.var.name))
+
+        str.var.summarizes <- dot.names (enquos (...))
+        if (length (str.var.summarizes > 0)) {
+            str.var.summarizes <- paste (names (str.var.summarizes), "=", str.var.summarizes)
+        }
+        
+        dc %>% group.elm.by.var_(str.dim.name, str.by.var.name, str.var.summarizes)
+    }
+
+
+group.elm.by.var_ <- function (obj, ...) { UseMethod ("group.elm.by.var_") }
+group.elm.by.var_.data.cube <- function (dc, dim.name, by.var.name, var.summarizes = character(0)) {
+    
+    old.indices <- dc[[dim.name]] %>% arrange (!! rlang::sym (dim.name)) %>% pull (by.var.name)
+
+    ## Replace min data.plane
+    other.var.names <- dc[[dim.name]] %>% names %>% intersect (var.names (dc)) %>% setdiff (by.var.name)
+
+    df <-
+        dc[[dim.name]] %>%
+        dplyr::group_by (.dots = by.var.name)
+
+    df.list <- list()
+    
+    if (length (other.var.names) > 0) {
+        df.list <- 
+            list (
+                .vars = as.list (other.var.names),
+                .funs = lapply (other.var.names, function (var) attr (vars (dc, var), "FUN.value"))
+            ) %>% 
+            pmap (
+                ~ df %>% summarise_at (.x, .y)
+            )
+    }
+    
+    if (length (var.summarizes) > 0) {
+        for (var.summarize in var.summarizes) {
+            pos <- regexpr ("=", var.summarize) [1]
+            new.var.name <- var.summarize %>% substring (0, pos-1) %>% trimws ()
+            expr <- parse_expr (var.summarize %>% substring (pos+1) %>% trimws ())
+
+            ## Compute variable
+            f <- function () {}
+            body (f) <- expr
+            var.names <- codetools::findGlobals (f, merge = FALSE) $variables %>% intersect (var.names (dc))
+            for (var.name in var.names) { dc <- dc %>% compute.var_(dim.name, var.name) }
+
+            new.df <- df %>% summarize (!! new.var.name := !! expr)
+            df.list <- df.list %>% append (list (new.df))
+
+            ## Update attributes
+            if (new.var.name != "name") {
+                var.class <- class (new.df %>% pull (new.var.name))
+                var <- new.var.name
+                class (var) <- "variable"
+                attr (var, "dim.names") <- dim.name
+                attr (var, "NA.value") <- var.NA (var.class)
+                attr (var, "FUN.value") <- var.FUN (var.class)
+                vars (dc, new.var.name) <- var
+            }
+        }
+    }
+
+    if (length (df.list) > 0) {
+        df <- df.list %>% reduce (inner_join, by = by.var.name)
+    } else {
+        df <- df %>% summarize ()
+    }
+
+    df <-
+        df %>%
+        ungroup %>%
+        rename (name := !! by.var.name) %>%
+        tibble::rowid_to_column (dim.name)
+    
+    plane.attributes (df) <- plane.attributes (dc[[dim.name]])
+    dc[[dim.name]] <- df
+
+    ## Compute indice table
+    new.indices <- dc[[dim.name]] %>% arrange (!! rlang::sym (dim.name)) %>% pull (name)
+    indices <- match (old.indices, new.indices)
+
+    ## Replace other data.planes
+    for (dp.name in names (dc)) {
+        dp.dim.names <- data.plane.dim.names (dp.name)
+
+        if (length (dp.dim.names) > 1) {
+            for (dp.dim.name in dp.dim.names) {
+                if (dim.name == dp.dim.name || dim.name %in% attr (dims (dc, dp.dim.name), "sup.dim.name")) {
+
+                    other.var.names <- dc[[dp.name]] %>% names %>% intersect (var.names (dc)) %>% setdiff (by.var.name)
+                    
+                    df <-
+                        dc[[dp.name]] %>%
+                        mutate (!! dp.dim.name := indices [!! rlang::sym (dp.dim.name)]) %>%
+                        dplyr::group_by (.dots = dp.dim.names)
+                    
+                    df <-
+                        list (
+                            .vars = as.list (other.var.names),
+                            .funs = lapply (other.var.names, function (var) attr (vars (dc, var), "FUN.value"))
+                        ) %>% 
+                        pmap (
+                            ~ df %>% summarise_at (.x, .y)
+                        ) %>% 
+                        reduce (inner_join, by = dp.dim.names) %>%
+                        ungroup
+
+                    plane.attributes (df) <- plane.attributes (dc[[dp.name]])
+                    dc[[dp.name]] <- df
+                }
+            }
+        }
+    }
+    
+    ## Remove variable
+    vars (dc, by.var.name) <- NULL
+    dc <- dc %>% rename.dim_(dim.name %>% setNames (by.var.name))
+    
+    return (dc)
+}
+
+
+group.elm <- function (obj, ...) { UseMethod ("group.elm") }
+group.elm.data.cube <-
+    function (dc, dim.name, elm.name, ...) {
+        str.dim.name <- arg.names (substitute (dim.name))
+        str.elm.name <- arg.names (substitute (elm.name))
+        str.elm.groups <- dot.names (enquos (...))
+
+        dc %>% group.elm_(str.dim.name, str.elm.name, str.elm.groups)
+    }
+
+
+group.elm_ <- function (obj, ...) { UseMethod ("group.elm_") }
+group.elm_.data.cube <- function (dc, dim.name, elm.name, elm.groups) {
+    
+    ## Compute involved variables
+    elm.group <- paste (elm.groups, collapse = " & ")
+    f <- function () {}
+    body (f) <- parse_expr (elm.group)
+    var.names <- codetools::findGlobals (f, merge = FALSE) $variables %>% intersect (var.names (dc))
+    for (var.name in var.names) { dc <- dc %>% compute.var_(dim.name, var.name) }
+
+    ## Group elements
+    dp.name <- plane.name (dc, dim.name)
+    var.mutate <- paste0 ("var.group = ifelse (", elm.groups, ", '", elm.name, "', name)")
+
+    dc <-
+        dc %>%
+        mutate.var_(dim.name, var.mutate) %>%
+        group.elm.by.var_(dim.name, "var.group") %>%
+        rename.dim_("var.group" %>% setNames (dim.name))
+        
+    return (dc)
+}
+
+
+group.elm.by.names <- function (obj, ...) { UseMethod ("group.elm.by.names") }
+group.elm.by.names.data.cube <-
+    function (dc, dim.name, elm.names) {
+        str.dim.name <- arg.names (substitute (dim.name))
+
+        dc %>% group.elm.by.names_(str.dim.name, elm.names)
+    }
+
+
+group.elm.by.names_ <- function (obj, ...) { UseMethod ("group.elm.by.names_") }
+group.elm.by.names_.data.cube <- function (dc, dim.name, elm.names) {
+    elm.table <- elm.names %>% names %>% rep (elm.names %>% sapply (length))
+    names (elm.table) <- elm.names %>% unlist
+
+    dc %>%
+        mutate.var_(dim.name, "by.var.name = elm.table [name]") %>%
+        group.elm.by.var_(dim.name, "by.var.name")
+}
+
+
+group.day.elm <- function (obj, ...) { UseMethod ("group.day.elm") }
+group.day.elm.data.cube <-
+    function (dc, dim.name) {
+        str.dim.name <- arg.names (substitute (dim.name))
+
+        dc %>% group.day.elm_(str.dim.name)
+    }
+
+
+group.day.elm_<- function (obj, ...) { UseMethod ("group.day.elm_") }
+group.day.elm_.data.cube <-
+    function (dc, dim.name) {
+        if (dim.name == "day") { dc }
+        else if (dim.name == "week") {
+            dc %>%
+                mutate.var (day, week = as.character (floor_date (as.Date (name) - 1, "weeks") + 1)) %>%
+                group.elm.by.var (day, week) %>%
+                rename.dim (week = day)
+        } else if (dim.name == "month") {
+            dc %>%
+                mutate.var (day, month = str_sub (name, 1, 7)) %>%
+                group.elm.by.var (day, month) %>%
+                rename.dim (month = day)
+        } else if (dim.name == "year") {
+            dc %>%
+                mutate.var (day, year = str_sub (name, 1, 4)) %>%
+                group.elm.by.var (day, year) %>%
+                rename.dim (year = day)
+        }
+    }
+
+
 arrange.elm <- function (obj, ...) { UseMethod ("arrange.elm") }
 arrange.elm.data.cube <-
     function (dc, dim.names, ...) {
@@ -2052,7 +2388,6 @@ arrange.elm_ <- function (obj, ...) { UseMethod ("arrange.elm_") }
 arrange.elm_.data.cube <- function (dc, dim.names, var.names) {
     ## TODO: check ordering (variables and dimensions) before registering it
     ## TODO: suppress multiple occurrences of the same arrangement
-
     if (is.null (attr (dc, "arrange.var.names"))) { attr (dc, "arrange.var.names") <- list() }
 
     dp.name <- plane.name (dc, dim.names)
@@ -2078,6 +2413,7 @@ arrange.elm.by.name.data.cube <-
 
 arrange.elm.by.name_ <- function (obj, ...) { UseMethod ("arrange.elm.by.name_") }
 arrange.elm.by.name_.data.cube <- function (dc, dim.names = dim.names.data.cube (dc)) {
+    dim.names <- dim.names %>% intersect (sup.dim.names (dc))
     for (dim.name in rev (dim.names)) {
         dc <- dc %>% arrange.elm_(dim.name, "name")
     }
@@ -2095,40 +2431,64 @@ apply.arrange.elm.data.cube <-
 
 
 apply.arrange.elm_ <- function (obj, ...) { UseMethod ("apply.arrange.elm_") }
-apply.arrange.elm_.data.cube <- function (dc, dim.names = attr (dc, "dim.names")) {
-    
+apply.arrange.elm_.data.cube <- function (dc, dim.names = dim.names.data.cube (dc)) {    
     dp.name <- plane.name (dc, dim.names)
-
+    
     for (dp.name.2 in names (attr (dc, "arrange.var.names"))) {
         
         dim.names.2 <- data.plane.dim.names (dp.name.2)
 
-        if (all (dim.names.2 %in% dim.names)) {
-            arrange.var.names <- attr (dc, "arrange.var.names") [[dp.name.2]]
+        if (length (dim.names.2) > 1) {
+            if (all (dim.names.2 %in% dim.names)) {
+                arrange.var.names <- attr (dc, "arrange.var.names") [[dp.name.2]]
 
-            ## Compute involved variables
-            for (var.name in rev (arrange.var.names)) {
+                ## Compute involved variables
+                for (var.name in rev (arrange.var.names)) {
+                    
+                    f <- function () {}
+                    body (f) <- parse_expr (var.name)
+                    struct <- codetools::findGlobals (f, merge = FALSE)
+                    dc <- dc %>% compute.var_(dim.names.2, struct$variables %>% intersect (var.names (dc)))
+
+                    ## Arrange elements
+                    dc[[dp.name.2]] <-
+                        parse (text = paste0 ("dc[[dp.name.2]] %>% arrange (", var.name, ")")) %>% eval
+                }
                 
-                f <- function () {}
-                body (f) <- parse_expr (var.name)
-                struct <- codetools::findGlobals (f, merge = FALSE)
-                dc <- dc %>% compute.var_(dim.names.2, struct$variables %>% intersect (var.names (dc)))
-
-                ## Arrange elements
-                dc[[dp.name.2]] <-
-                    parse (text = paste0 ("dc[[dp.name.2]] %>% arrange (", var.name, ")")) %>% eval
-
-                ## if (length (struct$functions) == 0) {
-                ##     dc[[dp.name.2]] <- dc[[dp.name.2]] %>% arrange (!! rlang::sym(struct$variables[[1]]))
-                ## } else {
-                ##     dc[[dp.name.2]] <- dc[[dp.name.2]] %>% arrange (get (struct$functions[[1]]) (!! rlang::sym(struct$variables[[1]])))
-                ## }
-                
+                dc[[dp.name]] <-
+                    dc[[dp.name.2]] %>%
+                    select (dim.names.2) %>%
+                    inner_join (dc[[dp.name]], by = dim.names.2)
             }
+        } else {
+            for (dim.name in rev (dim.names)) {
+                if (dim.name == dim.names.2 || dim.names.2 %in% attr (dims (dc, dim.name), "sup.dim.name")) {
+                    arrange.var.names <- attr (dc, "arrange.var.names") [[dp.name.2]]
+
+                    ## Compute involved variables
+                    for (var.name in rev (arrange.var.names)) {
                         
-            dc[[dp.name]] <- dc[[dp.name.2]] %>%
-                select (dim.names.2) %>%
-                inner_join (dc[[dp.name]], by = dim.names.2)
+                        f <- function () {}
+                        body (f) <- parse_expr (var.name)
+                        struct <- codetools::findGlobals (f, merge = FALSE)
+                        compute.var.names <- struct$variables %>% intersect (var.names (dc))
+
+                        if (length (compute.var.names) > 0) {
+                            dc <- dc %>% compute.var_(dim.names.2, compute.var.names)
+                        }
+
+                        ## Arrange elements
+                        dc[[dp.name.2]] <-
+                            parse (text = paste0 ("dc[[dp.name.2]] %>% arrange (", var.name, ")")) %>% eval
+                    }
+                    
+                    dc[[dp.name]] <-
+                        dc[[dp.name.2]] %>%
+                        select (dim.names.2) %>%
+                        inner_join (dc[[dp.name]], by = dim.name %>% setNames (dim.names.2)) %>%
+                        dplyr::rename (!!dim.name := !!dim.names.2)
+                }
+            }
         }
     }
 
@@ -2324,17 +2684,17 @@ plot.var_.data.cube <-
 
 biplot.var <- function (obj, ...) { UseMethod ("biplot.var") }
 biplot.var.data.cube <-
-    function (dc, x.var.name, y.var.name, log = "") {
+    function (dc, x.var.name, y.var.name, labels = TRUE, log = "") {
         str.x.var.name <- deparse (substitute (x.var.name))
         str.y.var.name <- deparse (substitute (y.var.name))
 
-        dc %>% biplot.var_(str.x.var.name, str.y.var.name, log = log)
+        dc %>% biplot.var_(str.x.var.name, str.y.var.name, labels = labels, log = log)
     }
 
 
 biplot.var_ <- function (obj, ...) { UseMethod ("biplot.var_") }
 biplot.var_.data.cube <-
-    function (dc, x.var.name, y.var.name, log = "") {
+    function (dc, x.var.name, y.var.name, labels = TRUE, log = "") {
         
         ## Get data.frame
         dim.names <-
@@ -2348,19 +2708,27 @@ biplot.var_.data.cube <-
         df <- dc %>% select.dim_(dim.names) %>% select.var_(c (x.var.name, y.var.name)) %>% as.data.frame (complete = TRUE)
         if (nrow (df) == 0) { return (NULL) }
 
-        ## Get element labels
         unique.dim.names <- dim.names [sapply (dim.names, function (dim.name) length (unique (df[[dim.name]])) == 1)]
         multiple.dim.names <- dim.names %>% setdiff (unique.dim.names)
-
-        df$label <- apply (df, 1, function (row) paste (row [multiple.dim.names], collapse = " / "))
-        df$label <- factor (df$label, levels = unique (df$label))
+        
+        ## Get element labels
+        if (labels) {
+            df$label <- apply (df, 1, function (row) paste (row [multiple.dim.names], collapse = " / "))
+            df$label <- factor (df$label, levels = unique (df$label))
+        }
 
         ## Build plot
-        p <-
-            df %>%
-            ggplot (aes (x = get (x.var.name), y = get (y.var.name), label = label)) +
-            geom_point () +
-            geom_text (vjust = 2) + {
+        if (labels) {
+            p <- df %>%
+                ggplot (aes (x = get (x.var.name), y = get (y.var.name), label = label)) +
+                geom_text (vjust = 2)
+        } else {
+            p <- df %>%
+                ggplot (aes (x = get (x.var.name), y = get (y.var.name)))
+        }
+
+        p <- p +
+            geom_point () + {
                 if (str_detect (log, "x")) { scale_x_log10 () }
             } + {
                 if (str_detect (log, "y")) { scale_y_log10 () }

@@ -53,6 +53,7 @@ dc.12 <- df.12 %>% as.data.cube (c (user = dim1, time = dim2), c (activ = var12)
 dc.1 <- df.1 %>% as.data.cube (c (user = dim1), c (login = var7))
 
 dc <- dc.112 %>% join (dc.12) %>% join (dc.1)
+dc <- dc %>% mutate.var (list (from, to, time), inter2 = inter * 2)
 dc %>% str
 dc %>% dim.names
 dc %>% sup.dim.names
@@ -71,6 +72,17 @@ dc %>% select.dim (from) %>% str
 dc %>% select.dim (user) %>% str
 dc %>% select.dim (user, from, time) %>% str
 dc %>% select.dim (user, time) %>% str
+
+dc %>% as.graph (from, to)
+
+graph <- 
+    dc %>%
+    select.dim (from, to) %>%
+    rename.dim (from = from, to = to) %>%
+    as.data.frame %>%
+    graph_from_data_frame (directed = TRUE, vertices = dc %>% select.dim (user) %>% as.data.frame)
+
+ graph
 
 
 ## Create data.cube
@@ -358,6 +370,16 @@ dc %>% filter.elm (c (a, b), v1 > 8) %>% str
 dc %>% filter.elm (c (a, b), v1 > 100) %>% str
 
 
+## Group elements
+source ('../src/data.cube.R')
+
+dc %>% group.elm.by.var (a, v6) %>% as.data.frame
+
+dc %>% mutate.var (a, group = v6 %in% c("B","C")) %>% group.elm.by.var (a, group) %>% as.data.frame
+
+dc %>% group.elm.by.names (a, list (A12 = c ("a1", "a2"), A34 = c ("a3", "a4"))) %>% as.data.frame
+
+
 ## Plot variables 1
 source ('../src/data.cube.R')
 
@@ -461,7 +483,7 @@ dc <- dc %>% compute.var.model (v1 (a * b * c), v1 (a) * v1 (b) * v1 (c))
 dc %>% compute.var.deviation (v1 (a * b * c), deviation.type = "ratio") %>% as.data.frame
 dc %>% compute.var.deviation (v1 (a * b * c), deviation.type = "poisson") %>% as.data.frame
 dc %>% compute.var.deviation (v1 (a * b * c), deviation.type = "KLdiv") %>% as.data.frame
-dc %>% compute.var.deviation (v1 (a * b * c), deviation.type = "chi2") %>% as.data.frame
+dc %>% compute.var.deviation (v1 (a * b * c), deviation.type = "chisq") %>% as.data.frame
 
 dc <- dc %>% compute.var.deviation (v1 (a * b * c), deviation.type = "poisson")
 dc %>% compute.var.outlier (v1 (a * b * c)) %>% as.data.frame

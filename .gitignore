@@ -23,5 +23,6 @@ data/*
 !data/twitter.eu.csv
 !data/twitter.fr.csv
 !data/geomedia.csv
+doc/tutorial-ODYCCEUS-src/data/*
 
 outlier-explorer.api/guardian*
