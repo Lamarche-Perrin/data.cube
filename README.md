@@ -29,7 +29,7 @@ cd data.cube/outlier-explorer.app/
 Rscript launch.api.R
 ```
 This application is currently hosted on the [Huma-Num](https://www.huma-num.fr/about-us) facility for digital humanities:  
-https://analytics.huma-num.fr/ODYCCEUS/data.cube/outlier-explorer.app/
+https://penelope.huma-num.fr/apps/data.cube/outlier-explorer.app/
 
 ### Launch "Outlier Explorer" Web Service with `plumber`
 
@@ -38,10 +38,11 @@ cd data.cube/outlier-explorer.api/
 Rscript launch.app.R
 ```
 This Web service is hosted on the [Huma-Num](https://www.huma-num.fr/about-us) facility for digital humanities:  
-https://penelope.huma-num.fr/multidim/
+https://penelope.huma-num.fr/tools/
 
 Also see the API specifications on SwaggerHub:  
-https://app.swaggerhub.com/apis/Lamarche-Perrin/outlier-explorer/1.0.1
+https://app.swaggerhub.com/apis-docs/Lamarche-Perrin/outlier-explorer/1.0.1
+
 
 ### Authors
 
