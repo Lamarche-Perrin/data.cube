@@ -26,3 +26,4 @@ data/*
 !data/geomedia.tutorial.csv
 
 outlier-explorer.api/guardian.*
+doc/tutorial-ODYCCEUS-src/data/*
