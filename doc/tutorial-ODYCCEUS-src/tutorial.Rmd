@@ -10,19 +10,19 @@ Statistical outliers can then be identified among the observations by first sele
 ## Table of Contents
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set (echo = TRUE)
-source ("_render_toc.R")
+knitr::opts_chunk$set (echo = TRUE, cache = TRUE, cache.lazy = FALSE, out.width = "\\textwidth", fig.align = "center")
+source ('_render_toc.R')
 ```
 
-```{r toc, echo=FALSE}
-render_toc ("tutorial.Rmd", toc_depth = 3)
+```{r toc, echo=FALSE, cache = FALSE}
+render_toc ('tutorial.Rmd', toc_depth = 3)
 ```
 
 
 ## Installation {-}
 
 The library is not yet available on CRAN.
-Its source code is available on GitHub: <https://github.com/Lamarche-Perrin/data.cube>
+Its source code is available on GitHub: <https://github.com/Lamarche-Perrin/data.cube/blob/master/src/data.cube.R>
 
 <!-- ```{r eval=FALSE} -->
 <!-- install.packages ('data.cube') -->
@@ -44,20 +44,19 @@ Copyright © 2017-2019 Robin Lamarche-Perrin (<Robin.Lamarche-Perrin@lip6.fr>)
 This tutorial assumes that you are familiar with the most known R packages of the [`tidyverse`](https://www.tidyverse.org/), in particular `tibble` operations provided by [`dplyr`](https://dplyr.tidyverse.org/) and the forward-pipe operator `%>%` provided by [`magrittr`](https://magrittr.tidyverse.org/).
 
 
-## Downloading the dataset
+## Importing the dataset
 
 This tutorial presents a use case of the `data.cube` library on a dataset of 30M tweets published between January 2015 and July 2016, and relating to the European migrant crisis of 2015 (request: "(e|im)?migrant(s)?").
 These tweets have been extracted with [DMI-TCAT](https://github.com/digitalmethodsinitiative/dmi-tcat), a software designed by the [Digital Methods Initiative](https://wiki.digitalmethods.net/Dmi/SummerSchool2019), in the context of the [H2020 ODYCCEUS Project](https://www.odycceus.eu/).
 
 First, import the main file of this dataset as a `data.frame` (actually, as a `tibble`):
 
-```{r import_df, results="hide"}
+```{r import_df, message=FALSE}
 library (readr)
-df <- read_csv ('data/ODYCCEUS-migrant-crisis-tweets.csv')
+df.tweets <- read_csv ('data/ODYCCEUS-migrant-crisis-tweets.csv')
+df.tweets
 ```
-```{r print_df}
-df
-```
+<!-- TODO: sample tibble -->
 
 * First column `day` contains publication dates of the tweets (`YYYY-MM-DD` format).
 
@@ -76,18 +75,18 @@ Accounts with less than 1000 followers have been anonymised (for example `user12
 In this regard, a tweet containing `n` different hashtags is weighted by `1/n` and then distributed among `n` lines.
 Summing this last columns hence gives the exact number of tweets (contrary to the `count` column).
 
-<!-- For example, the third line of the dataset above indicates that the Venezuelan newspaper *El Universal* (`es_VEN_univer_int`) as published `9` articles talking about Libya (`LBY`) during the week starting on the 19th of May, 2014 (`2014-05-19`). -->
+<!-- For example, the third line of the dataset above indicates that on the 1st of January 2015 (`2015-01-01`) user `055Douglas` retweeted (`retweet`) a tweet from user `mcspocky` containing hashtag `Immigration`, and that it happened only once (`count == 1`). -->
 
 
 ## Loading the library
 
 First, load the library:
 ```{r source_lib1, eval=FALSE}
-source ('../../src/data.cube.R')
+source ('data.cube.R')
 # or library (data.cube) when it will be available as a proper R package
 ```
 
-```{r source_lib2, include=FALSE}
+```{r source_lib2, include=FALSE, eval=TRUE}
 source ('../../src/data.cube.R')
 ```
 
@@ -99,13 +98,12 @@ Note that one might also rename these dimensions and variables when transforming
 
 
 ```{r as_dc}
-dc <-
-    df %>%
-    as.data.cube (
-        dim.names = list (day, from_user, type, to_user, hashtag),
-        var.names = list (documents = weight, counts = count),
-        sub.dim.names = list (user = list (from_user, to_user))
-    )
+dc.tweets <-
+    df.tweets %>% as.data.cube (
+               dim.names = list (day, from_user, type, to_user, hashtag),
+               var.names = list (tweets = weight, count),
+               sup.dim.names = list (user = list (from_user, to_user))
+           )
 ```
 
 
@@ -113,7 +111,7 @@ dc <-
 Function `summary` then prints a short summary of the data contained in the resulting structure.
 
 ```{r summary_dc}
-dc %>% summary ()
+dc.tweets %>% summary (verbose = TRUE)
 ```
 
 
@@ -122,7 +120,7 @@ dc %>% summary ()
 Function `as.data.frame` transforms a `data.cube` object back into a `data.frame` object (actually, a `tibble`).
 
 ```{r as_df}
-dc %>% as.data.frame ()
+dc.tweets %>% as.data.frame ()
 ```
 
 
@@ -133,235 +131,392 @@ The library provide simple tools for subsetting the data and begin the explorati
 In this section, we hence focus on the analysis of the temporal popularity of hashtags by only selecting the `day` and `hashtag` dimensions: "*When* do we talk about *what*?"
 
 
-## Selecting dimensions, filtering and arranging elements
+## Filtering elements, renaming variables, selecting dimensions, and arranging elements
+
+In the script below:
+
+* `filter.elm (type, name == 'tweet')` filters out elements of dimension `type` which are not tweets (*i.e.*, filters out replies and retweets);
+* `rename.var (tweets = documents)` renames variable `documents` with new name `tweets`;
+* `select.dim (day, hashtag)` selects dimensions `day` and `hashtag` for the following analysis (*i.e.*, aggregate the data along other dimensions `from_user`, `to_user`, and `type`);
+* `arrange.elm.by.name ()` arranges elements of all dimensions according to their name (in lexicographic order).
+
 
 ```{r build_dc.day.hashtag}
 dc.day.hashtag <-
-    dc %>%
-    filter.elm (type, name == 'tweet') %>%
-    rename.var (tweets = documents) %>%
+    dc.tweets %>%
+    filter.elm (type, type == 'tweet') %>%
     select.dim (day, hashtag) %>%
     arrange.elm.by.name ()
 
 dc.day.hashtag %>% summary ()
+
+dc.day.hashtag %>% as.data.frame ()
 ```
+<!-- TODO: randomize -->
 
 ## First plot: Focusing on the temporal dimension
+
+We now have a two-dimensional `data.cube` containing all hashtags through time appearing in the corpus' tweets.
+First, one can select dimension `day` and plot variable `tweets` with function `plot.var` to have an aggregated representation of the number of published tweets each day (regardless of the hashtags they contain).
 
 ```{r plot_day}
 dc.day.hashtag %>%
     select.dim (day) %>%
-    plot.var (tweets)
+    ggplot.var (tweets)
 ```
+
+
+Note that function `group.day.elm` easily allows to change the temporal resolution of a `data.cube` containing a dimension `day`.
+A parameter indicates the name of the replacing temporal dimension: `dim.name %in% c ('week', 'month', 'year')`.
+
+Also note that function `plot.var` returns a `ggplot` object that can hence be customised accordingly.
+Below, we use `scale_x_date` to change the date labels on the x-axis and `ggtitle` to add a title to the plot.
 
 ```{r plot_week}
 dc.day.hashtag %>%
     select.dim (day) %>%
     group.day.elm (week) %>%
-    plot.var (tweets)
+    ggplot.var (tweets) +
+    ggtitle ("Number of tweets through time")
 ```
 
 ## Second plot: Looking at hashtags
 
+We now look at the second dimension of our `data.cube`, that is the dimension of hashtags (regardless of publication dates).
+In the script below:
+
+* `filter.elm (hashtag, ! name %in% hashtags.to.remove, name != 'NULL')` filters out hashtags that belongs to a user-defined list (those corresponding to keywords that were used to collect the initial corpus) and also removes hashtag `NULL` (corresponding to tweets in the corpus that do not contain any hashtag).
+
+* `top_n.elm (hashtag, tweets, n = 20)` retains the 20 hashtags that appear in the most tweets;
+
+* `arrange.elm (hashtag, desc (tweets))` arranges the retained hashtag with respect to the number of tweets in which they appear (in decreasing order).
+
+
 ```{r plot_hashtags}
-hashtags.to.remove <- c ("emigrant", "emigrants", "immigrant", "immigrants", "migrant", "migrants", "Emigrant", "Emigrants", "Immigrant", "Immigrants", "Migrant", "Migrants")
+hashtags.to.remove <- c ('NULL', 'emigrant', 'emigrants', 'immigrant', 'immigrants', 'migrant', 'migrants', 'Emigrant', 'Emigrants', 'Immigrant', 'Immigrants', 'Migrant', 'Migrants')
 
 dc.hashtag <-
     dc.day.hashtag %>%
     select.dim (hashtag) %>%
-    filter.elm (hashtag, ! name %in% hashtags.to.remove, name != "NULL") %>%
+    filter.elm (hashtag, ! hashtag %in% hashtags.to.remove) %>%
     top_n.elm (hashtag, tweets, n = 20) %>%
     arrange.elm (hashtag, desc (tweets))
 
-dc.hashtag %>%
-    as.data.frame
-
-dc.hashtag %>%
-    plot.var (tweets)
+dc.hashtag %>% ggplot.var (tweets)
 ```
+
 
 ## Outlier detection: Looking at popular hashtags through time
 
-```{r outlier_detection}
-hashtags <- c ("Libia", "Iran", "Iraq", "Afghanistan", "Kosovo", "Eritrea", "Nigeria")
+The `data.cube` library offers simple tools for outlier detection in multidimensional data.
+Let's look for dates when given hashtags are particularly popular (*cf.* country names in script below).
+
+We first build a subset of the previous `data.cube` by selecting 7 hashtags of interest.
+
+```{r outlier_detection_1}
+hashtags.of.interest <- c ('Iran', 'Iraq', 'Kosovo', 'Eritrea', 'Nigeria', 'Lybia')
 
 dc.day.hashtag.subset <-
     dc.day.hashtag %>%
-    filter.elm (hashtag, name %in% hashtags) %>%
+    filter.elm (hashtag, hashtag %in% hashtags.of.interest) %>%
     arrange.elm (hashtag, desc (tweets)) %>%
     group.day.elm (week)
+```
 
+We now use function `plot.var` with parameter `sep.dim.names = hashtag` to plot 5 lines, each corresponding to the number of tweets in which the 5 selected hashtags appear.
+
+```{r outlier_detection_2}
 dc.day.hashtag.subset %>%
-    plot.var (tweets, sep.dim.names = hashtag, type = "line")
+    ggplot.var (tweets, sep.dim.names = hashtag, type = 'line')
+```
 
+Finding outliers in the plot above is problematic.
+Because hashtag `Iran` is much more present than other ones, most curves look quite low.
+Indeed, if one get the aggregated tweet number of selected hashtags (regardless of publication dates), one notice that they globally have quite different levels of popularity on the whole corpus (*e.g,* `Iran` appears in 12 times more tweets than `Kosovo`).
+
+```{r outlier_detection_3}
 dc.day.hashtag.subset %>%
     select.dim (hashtag) %>%
     as.data.frame
+```
 
+Finding outliers hence requires to first define an "expectation model" to which observations must then be compared.
+There are multiple ways of defining such a model.
+For a start, one can take into account the aggregated values above to build expected values.
+
+In the script below, function `mutate.var.model` applied on variable `tweets` with parameter `tweets (hashtags)` defines a model which (i)&nbsp;projects the variable onto dimension `hashtag` (*i.e.*, aggregates dimension `week`), (ii)&nbsp;get the resulting tweet number for each hashtag, (iii)&nbsp;uniformly distributes this aggregated variable within dimension `week` to obtain an average value.
+It results in the computation of a new variable, `tweets.model <- tweets (hashtag) / elm.nb (week)`, which is displayed in the following plot.
+
+
+```{r outlier_detection_4, message=FALSE}
 dc.day.hashtag.subset %>%
     complete.elm () %>%
-    compute.var.model (tweets (week * hashtag), tweets (hashtag)) %>%
-    plot.var (tweets.model, sep.dim.names = hashtag, type = "line")
-
-dc.day.hashtag.subset %>%
-    compute.var.model (tweets (week * hashtag), tweets (hashtag)) %>%
-    compute.var.deviation (tweets (week * hashtag)) %>%
-    plot.var (tweets.deviation, sep.dim.names = hashtag, type = "bar")
-
-dc.day.hashtag.subset %>%
-    compute.var.model (tweets (week * hashtag), tweets (hashtag)) %>%
-    compute.var.deviation (tweets (week * hashtag), deviation.type = "chisq") %>%
-    plot.var (tweets.deviation, sep.dim.names = hashtag, type = "bar")
-
-dc.day.hashtag.subset %>%
-    compute.var.model (tweets (week * hashtag), tweets (hashtag)) %>%
-    compute.var.deviation (tweets (week * hashtag), deviation.type = "chisq") %>%
-    compute.var.outlier (tweets (week * hashtag)) %>%
-    arrange.elm (list (week, hashtag), desc (tweets.deviation)) %>%
-    as.data.frame
+    mutate.var.model (tweets, tweets (hashtag)) %>%
+    ggplot.var (tweets.model, sep.dim.names = hashtag, type = 'line')
 ```
+
+Using this computed model, function `mutate.var.deviation` then computes a third variable, `tweets.deviation`, which indicates to which extent observations deviate from the model.
+With no additional parameter, the deviation is given by a simple ratio `tweets.deviation <- tweets / tweets.model`.
+
+```{r outlier_detection_5, message=FALSE}
+dc.day.hashtag.subset %>%
+    mutate.var.model (tweets, tweets (hashtag)) %>%
+    mutate.var.deviation (tweets, deviation.type = "ratio") %>%
+    ggplot.var (tweets.deviation, sep.dim.names = hashtag, type = 'bar')
+```
+
+One can now see in the plot above that hashtags that all hashtags show outlier values, even those that are globally less popular than others (such as `Kosovo` in a week of May 2016, which has been cited 12 times more during that week than the averaged value).
+
+Note that ratio does not account for the significativity of a deviation.
+Indeed, observing a value of `4` when expecting `2` is equivalent to observing a value of `400` when expecting `200`, although the former might easily be caused by insignificant statistical variations while the latter is much more reliable.
+Function `mutate.var.deviation` can hence be adjusted with parameter `deviation.type %in% c ('ratio', 'poisson', 'chisq', 'KLdiv')` to use other deviation measures which take into account the significativity of such deviations.
+
+For example, in the script below, `deviation.type = 'chisq'` indicates to use a measure based on the Chi-squared test: `tweets.deviation <- (tweets - tweets.model)^2 / tweets.model`.
+
+```{r outlier_detection_6, message=FALSE}
+dc.day.hashtag.subset %>%
+    mutate.var.model (tweets, tweets (hashtag)) %>%
+    mutate.var.deviation (tweets, deviation.type = 'chisq') %>%
+    ggplot.var (tweets.deviation, sep.dim.names = hashtag, type = 'bar')
+```
+
+It then appears in the plot above that `Kosovo` indeed shows less outliers that computed before when accounting for the statistical significativity of such outliers.
+
+
+<!-- ```{r outlier_detection_7, message=FALSE} -->
+<!-- dc.day.hashtag.subset %>% -->
+<!--     mutate.var.model (tweets (week * hashtag), tweets (hashtag)) %>% -->
+<!--     mutate.var.deviation (tweets (week * hashtag), deviation.type = 'chisq') %>% -->
+<!--     arrange.elm (list (week, hashtag), desc (tweets.deviation)) %>% -->
+<!--     as.data.frame -->
+<!-- ``` -->
 	
-# Who is talking to whom?
 
-```{r import_df_user, results="hide"}
-df <- read_csv ('data/ODYCCEUS-migrant-crisis-users.csv')
+# Who is retweeting whom?
+
+This next section deals with another subset of the `data.cube` dimensions, that is the retweet relation between users: "*Who* is retweeting *whom*?"
+
+
+## Joining cubes to exploit other variables
+
+Because out initial `data.cube` contains `dc.tweets %>% elm.nb (user) = 4738410` users, which is quite huge for a first exploration, we choose to reduce this number by only retaining most influential users.
+To do so, we exploit another variable, that is the number of followers of each user.
+
+This variable is first imported from another `data.frame`.
+
+```{r import_df_user, message=FALSE}
+df.users <- read_csv ('data/ODYCCEUS-migrant-crisis-users.csv')
+df.users
 ```
+
+One can now build a uni-dimensional `data.cube` from the imported `data.frame` and join it with our first `data.cube` with function `join`.
+It results in a `data.cube` of 5 dimensions (as before) with a total of 4 variables (2 of them being defined on dimension `user` only).
 
 ```{r add_user_info}
-df
-
-dc <-
-    dc %>%
-    join (
-        df %>%
-        as.data.cube (
-            dim.names = user,
-            var.names = list (tweetcount, followercount)
-        )
+dc.users <-
+    df.users %>%
+    as.data.cube (
+        dim.names = user,
+        var.names = list (tweetcount, followercount)
     )
 
-dc %>% summary
+dc.tweets <- dc.tweets %>% join (dc.users)
+dc.tweets %>% summary ()
 ```
 
-```{r build_exp2}
-dc %>% filter.elm (user, followercount >= 5000) %>% elm.nb (user)
+We now check the number of users that have more than 5000 followers.
 
+```{r subset_for_exp2}
+dc.tweets %>% filter.elm (user, followercount >= 5000) %>% elm.nb (user)
+```
+
+We finally use function `group.elm` to aggregate together all users that have less than 5000 followers within a new element named `OTHER_USERS`.
+This drastically reduces the size of dimension `user` while keeping marginal information about the variables (contrary to function `filter.elm` which would have simply removed these users, along with all associated observations).
+
+```{r build_exp2}
 dc.from_user.to_user <-
-    dc %>%
-    filter.elm (type, name == "retweet") %>%
-    rename.var (retweets = documents) %>%
-    select.dim (from_user, to_user) %>%
+    dc.tweets %>%
+    filter.elm (type, type == 'retweet') %>%
+    rename.var (retweets = tweets) %>%
     group.elm (user, OTHER_USERS, followercount < 5000) %>%
-    arrange.elm.by.name ()
+    select.dim (from_user, to_user)    
 
 dc.from_user.to_user %>% summary ()
 ```
 
+
+## Two-dimensional plotting
+
+When projected onto dimension `user`, variable `retweets` now leads to two different variables: `retweets.from_user`, which corresponds to the number of retweets published by user, and `retweets.to_user`, which corresponds to the retweet number of tweets published by a given user.
+The former could be interpreted as the *activity* of users (as broadcasters) and the latter as the *popularity* of users (as authors).
+
+In the script below, function `biplot.var` allows to plot these two variables one against the other to explore the activity and popularity levels of a subset of users.
+
 ```{r plot_users}
 dc.from_user.to_user %>%
     select.dim (user) %>%
-    filter.elm (user, retweets.from_user >= 100, retweets.to_user >= 100, name != "OTHER_USERS") %>%
-    biplot.var (retweets.from_user, retweets.to_user, log = "xy")
+    filter.elm (user, retweets.from_user >= 500, retweets.to_user >= 500, user != 'OTHER_USERS') %>%
+    ggplot.vars (retweets.from_user, retweets.to_user, log = 'xy')
 ```
+
+## Exporting the cube to `igraph` for network analysis
+
+Function `as.igraph` allows to transform a two-dimensional `data.cube` into an `igraph` object, which can then serve for network analysis.
+
+```{r get_igraph_user}
+igraph.user <-
+    dc.from_user.to_user %>%
+    filter.elm (user, user != 'OTHER_USERS') %>%
+    as.igraph (from_user, to_user, edge.weight = retweets)
+```
+
+Because a graph of `vcount (igraph.user) == 165875` nodes is difficult to plot, in the script below, we use function `cluster_louvain` from the `igraph` library to group users into communities (*i.e.*, densely connected groups of nodes, see <https://igraph.org/r/doc/cluster_louvain.html> for detailed documentation).
+The resulting data structure hence associates a community index to each user.
 
 ```{r compute_communities}
-igraph.users <-
-    dc.from_user.to_user %>%
-    filter.elm (user, name != "OTHER_USERS") %>%
-    ## filter.elm (list (from_user, to_user), from_user != to_user) %>% TODO
-    as.igraph (from_user, to_user, edge.weight = retweets)
-
-## igraph.users <- ## TODO integrate in data.cube
-##     igraph.users %>%
-##     delete.vertices (which (degree(igraph.users) == 0))
-
 communities <-
-    igraph.users %>%
-    as.undirected (mode = "collapse", edge.attr.comb = sum) %>%
+    igraph.user %>%
+    as.undirected (mode = 'collapse', edge.attr.comb = sum) %>%
     cluster_louvain ()
-membership (communities) %>% head
 
-## small.igraph.users <-
-##     igraph.users %>%
-##     delete.vertices (communities [sizes (communities) < 100] %>% unlist %>% unname) %>%
-##     delete.vertices (which (degree(igraph.users) < 100))
-
-## edge.weight <- E(small.igraph.users)$weight %>% rescale (c (1, 10))
-
-## plot (small.igraph.users, edge.width = edge.weight, vertex.color = rainbow (length (communities), alpha=0.6) [communities$membership])
+membership (communities) %>% sample (4)
 ```
 
-```{r display_communities}
-pagerank <- page_rank (igraph.users)
-pagerank$vector %>% head
+<!-- ## small.igraph.user <- -->
+<!-- ##     igraph.user %>% -->
+<!-- ##     delete.vertices (communities [sizes (communities) < 100] %>% unlist %>% unname) %>% -->
+<!-- ##     delete.vertices (which (degree(igraph.user) < 100)) -->
 
+<!-- ## edge.weight <- E(small.igraph.user)$weight %>% rescale (c (1, 10)) -->
+
+<!-- ## plot (small.igraph.user, edge.width = edge.weight, vertex.color = rainbow (length (communities), alpha=0.6) [communities$membership]) -->
+
+In order to label these communities, we also use function `pagerank` from the `igraph` library to measure the level of importance of each user in the network (see <https://igraph.org/r/doc/page_rank.html> for detailed documentation).
+
+```{r compute_pagerank}
+pagerank <- page_rank (igraph.user)
+
+pagerank$vector %>% sample (4)
+```
+<!-- pagerank$vector %>% sort (decreasing = TRUE) %>% head -->
+
+Using function `join`, we add the two newly computed variables to our `data.cube` for later use.
+
+```{r join_communities}
 dc.from_user.to_user <-
     dc.from_user.to_user %>%
     join (
         membership (communities) %>% as.data.cube (user),
         pagerank$vector %>% as.data.cube (user, pagerank)
     )
-dc.from_user.to_user %>% summary
 
+dc.from_user.to_user %>% summary
+```
+
+These variables are now exploited to aggregate dimension `user` according to variable `community` with function `group.elm.by.var`.
+We also specify two new variables that are computed during the aggregation:
+* `label` is the concatenated names of the 5 most important users (according to variable `pagerank`) in each community;
+* `size` simply counts the number of users in each community.
+
+```{r group_by_community}
 dc.from_community.to_community <-
     dc.from_user.to_user %>%
     group.elm.by.var (
         user, community,
-        main.user = name [order (desc (pagerank)) [1:5]] %>% paste0 (collapse = '\n'),
+        label = user [order (desc (pagerank)) [1:4]] %>% paste0 (collapse = '\n'),
         size = n()
     ) %>%
     rename.dim (from_community = from_user, to_community = to_user)
+
 dc.from_community.to_community %>% summary
+```
 
+```{r plot_communities}
 dc.from_community.to_community %>%
-    arrange.elm (community, desc (size)) %>%
-    as.data.frame (community) %>%
-    print (n = 20)
+    select.dim (community) %>%
+    filter.elm (community, size > 1000, community != 'OTHER_USERS') %>%
+    mutate.var (community, community = label) %>%
+    ggplot.vars (size, retweets.to_community, log = 'xy')
+```
 
-igraph.communities <-
+As shown in the plot below (computed with the `ggplot` library), there are many small communities and few big ones.
+
+```{r communities_distribution, message=FALSE, warning=FALSE}
+dc.from_community.to_community %>%
+    as.data.frame (community) %>%
+    ggplot (aes (x = size)) +
+    geom_histogram () + scale_x_log10 () + scale_y_log10 ()
+```
+
+We hence extract community containing more than 1000 users (with variable `size`) and export the resulting aggregated network as an `igraph` object.
+
+```{r get_display_community}
+dc.from_community.to_community %>%
+    filter.elm (community, size >= 1000) %>%
+    arrange.elm (community, desc (size)) %>%
+    mutate.var (community, community = label) %>%
+    ggplot.var (retweets, sep.dim.names = from_community, type = "point")
+```
+
+<!-- ```{r get_display_community} -->
+<!-- dc.from_community.to_community %>% -->
+<!--     filter.elm (community, size >= 1000) %>% -->
+<!--     arrange.elm (community, desc (size)) %>%  -->
+<!--     mutate.var (community, name = label) %>% -->
+<!--     filter.elm (list (from_community, to_community), from_community == to_community) %>% -->
+<!--     mutate.vars.outlier (retweets (from_community * to_community), retweets (from_community) * retweets (to_community)) %>% -->
+<!--     plot.var (retweets, sep.dim.names = from_community, type = "point") -->
+<!-- ``` -->
+
+```{r get_igraph_community}
+igraph.community <-
     dc.from_community.to_community %>%
     filter.elm (community, size >= 1000) %>%
-    mutate.var (community, name = main.user) %>%
+    mutate.var (community, community = label) %>%
     as.igraph (from_community, to_community, vertex.size = size, edge.weight = retweets)
+```
 
+Finally, one can display the result (here using the `ForceAtlas2` layout algorithm).
 
+```{r display_communities, fig.height = 10, fig.width = 10}
 library (ForceAtlas2)
+set.seed (4)
 
-vertex.size <- 50 * V(igraph.communities)$size / max (V(igraph.communities)$size)
-edge.weight <- 30 * E(igraph.communities)$weight / max (E(igraph.communities)$weight)
+vertex.size <- 100 * V(igraph.community)$size / max (V(igraph.community)$size)
+edge.weight <- 20 * E(igraph.community)$weight / max (E(igraph.community)$weight)
 
 vertex.coordinate <-
-    igraph.communities %>%
-    layout.forceatlas2 (k = 400, iterations = 2000, plotstep = 0)
-igraph.communities %>%
+    igraph.community %>%
+    layout.forceatlas2 (k = 200, gravity = 5000, iterations = 2000, plotstep = 0, linlog = TRUE)
+
+igraph.community %>%
     plot (
         layout = vertex.coordinate,
         vertex.size = vertex.size,
+        edge.curved = 0.1,
         edge.width = edge.weight,
-        edge.curved = 0.1
     )
 ```
 
-```{r output_topicmodel}
-source ('../../src/data.cube.R')
-dc %>% summary
+<!-- vertex.label.cex = 0.6, -->
+<!-- edge.arrow.width = 0.5, -->
+<!-- edge.arrow.size = 0.5 -->
 
-dc %>%
-    filter.elm (type, name %in% c ("tweet", "reply")) %>%
-    filter.elm (user, followercount >= 5000) %>%
-    filter.elm (hashtag, name != "NULL") %>%
-    mutate.var (hashtag, hashtag.text = name) %>% # TODO: directly get hashtag name
-    transmute.var (text = hashtag.text) %>%
+# What is related to what?
+
+```{r output_topicmodel}
+dc.month.user <-
+    dc.tweets %>%
+    filter.elm (type, type %in% c ('tweet', 'reply')) %>%
+    filter.elm (user, followercount >= 1000 | user == 'NULL') %>%
+    filter.elm (hashtag, hashtag != 'NULL') %>%
+    transmute.var (text = hashtag, size = 1) %>%
     group.day.elm (month) %>%
-    select.dim (month, user) %>% # TODO: problem when selecting from_user
-    select.var (text.from_user) %>% # TODO: select and rename in same sentence
-    rename.var (text = text.from_user) ->
-    dc.month.user
+    select.dim (month, from_user)
+    
+dc.month.user %>% as.data.frame ()
 
 dc.month.user %>%
-    as.data.frame %>%
-    toJSON %>% # TODO: create as.JSON
-    write ("test.json")
-
-library (jsonlite)
+    as.json () %>%
+    write ('data/ODYCCEUS-migrant-crisis-hashtags-1000.json')
 ```

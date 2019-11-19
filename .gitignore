@@ -1,7 +1,7 @@
 # R FILES
 .Rproj.user
 .Rhistory
-.RData
+*.RData
 .Rd2pdf*
 inst/doc
 \*R\*

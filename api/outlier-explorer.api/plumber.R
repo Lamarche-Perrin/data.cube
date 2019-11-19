@@ -105,3 +105,39 @@ outliers <- function (data=NULL, dataset=NULL, param=NULL) {
     return (df)
 }
 
+
+
+library (quanteda)
+
+#' @post /tools/nf_input_emm
+nf_input_emm <- function (dir = "mydir",
+                          file = "myfile",
+                          lang = "AUTO",
+                          country = "AUTO",
+                          source = "AUTO") {
+    ## Import rss
+    fic <- paste (dir, "/", file, sep = "")
+    rss <- read.csv (fic,
+                  header = T,
+                  sep = ", ",
+                  stringsAsFactors = F,
+                  encoding = "UTF-8")
+    rss <- rss [, c ("media_language", "media_pub_country", "media_name", "publish_date", "title")]
+    names (rss) <- c ("lang", "country", "source", "time", "text")
+    rss$time <- as.POSIXct (rss$time)
+    if  (lang != "AUTO") { rss$lang <- lang }
+    if  (country != "AUTO") { rss$country <- country }
+    if  (source != "AUTO") { rss$source <- source }
+    meta <- rss [, c ("lang", "country",  "source", "time")]
+    
+    ## transfom in quanteda format
+    qd <- quanteda::corpus  (x = rss$text,
+                             docvars = meta,
+                             ## compress = T,
+                             metacorpus = list (source = "European Media Monitor",
+                                                notes = "Collected via MediaCloud")
+                             )
+    
+    ## export resuls
+    return (qd)
+}

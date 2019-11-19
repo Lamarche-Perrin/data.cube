@@ -1,3 +1,4 @@
 library (rmarkdown)
-render ("tutorial.Rmd")
-##render ("test.render_toc.Rmd")
+source ('../../src/data.cube.R')
+render ('tutorial.Rmd')
+##render ('test.render_toc.Rmd')
